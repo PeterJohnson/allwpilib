@@ -686,11 +686,7 @@ class DataLogStaticMixin {
     if (wpi::Error e =
             impl->Check(Derived::kDataType, Derived::kDataLayout,
                         Derived::kRecordSize, true, checkLayout, true))
-#if defined(__clang__) || (defined(__GNUC__) && __GNUC__ < 8)
-      return std::move(e);
-#else
-      return e;
-#endif
+      return wpi::Expected<Derived>{std::move(e)};
     return Derived(impl, false);
   }
 
@@ -722,17 +718,9 @@ class DataLogStaticMixin {
     if (wpi::Error e = log.GetImpl()->DoOpen(
             filename, Derived::kDataType, Derived::kDataLayout,
             Derived::kRecordSize, disp, config))
+      return wpi::Expected<Derived>{std::move(e)};
+    return wpi::Expected<Derived>{std::move(log)};
 
-#if defined(__clang__)
-      return std::move(e);
-    return log;
-#elif defined(__GNUC__) && __GNUC__ < 8
-      return std::move(e);
-    return std::move(log);
-#else
-      return e;
-    return log;
-#endif
   }
 };
 
