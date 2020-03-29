@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="coreui.min.css">
+    <link rel="stylesheet" href="frcvision.css">
+    <link rel="icon" type="image/png" sizes="128x128" href="wpilib.png">
+
+    <title>CameraServer Configuration</title>
+  </head>
+  <body class="app header-fixed sidebar-md-show sidebar-fixed">
+    <header class="app-header navbar">
+      <a class="navbar-brand" href="#">
+        <img src="wpilib.png" class="img-fluid ml-2 mr-2 brand-icon" alt="WPILib">
+        CameraServer
+      </a>
+      <span class="navbar-text mr-2">
+        <span class="badge badge-secondary" id="connectionBadge">Disconnected</span>
+      </span>
+    </header>
+
+    <div class="app-body">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <nav class="sidebar-nav">
+          <ul class="nav">
+            <li class="nav-item">
+              <a class="nav-link active" id="server-status-tab" data-toggle="tab" href="#server-status">
+                <i class="nav-icon" data-feather="info"></i>
+                Server Status
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" id="server-config-tab" data-toggle="tab" href="#server-config">
+                <i class="nav-icon" data-feather="sliders"></i>
+                Server Config
+              </a>
+            </li>
+            <li>
+              <a class="nav-link" id="add-camera-tab" data-toggle="tab" href="#add-camera">
+                <i class="nav-icon" data-feather="plus-circle"></i>
+                Add Camera
+              </a>
+            </li>
+            <li class="nav-item" style="display:none" id="cameraNavNEW">
+              <a class="nav-link" id="camera-settings-NEW-tab" data-toggle="tab" href="#camera-settings-NEW">
+                NEW
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
+      <!-- Main Pane -->
+      <main class="main">
+        <span id="status-content"></span>
+        <div class="tab-content" id="nav-tabContent">
+          <!-- Server Status -->
+          <div class="tab-pane show active" id="server-status" role="tabpanel" aria-labelledby="server-status-tab">
+            <h5>Active Streams</h5>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th scope="col" style="width: 30%;">Source</th>
+                  <th scope="col" style="width: 30%;">IP</th>
+                  <th scope="col" style="width: 10%;">Port</th>
+                  <th scope="col" style="width: 15%;">FPS</th>
+                  <th scope="col" style="width: 15%;">Mbps</th>
+                </tr>
+              </thead>
+              <tbody id="server-status-streams"></tbody>
+            </table>
+          </div>
+
+          <!-- Add Camera -->
+          <div class="tab-pane" id="add-camera" role="tabpanel" aria-labelledby="add-camera-tab">
+            <form class="needs-validation" novalidate>
+              <div class="form-group">
+                <label for="addCameraId">Camera Name</label>
+                <input type="text" class="form-control" id="addCameraId" aria-describedby="addCameraIdHelp" required>
+                <div class="invalid-feedback">
+                  Please choose a unique name.
+                </div>
+                <small id="addCameraIdHelp" class="form-text text-muted">
+                  The camera name uniquely identifies the camera and cannot be changed. A good choice is a short name like "front".
+                </small>
+              </div>
+              <ul class="nav nav-tabs" id="add-usb-camera-tabs" role="tablist">
+                <li class="nav-item">
+                  <a class="nav-link active" id="add-usb-camera-tab" data-toggle="tab" href="#add-usb-camera" role="tab" aria-controls="add-usb-camera" aria-selected="true">USB</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" id="add-network-camera-tab" data-toggle="tab" href="#add-network-camera" role="tab" aria-controls="add-network-camera" aria-selected="false">Network</a>
+                </li>
+              </ul>
+              <div class="tab-content">
+                <div class="tab-pane active" id="add-usb-camera" role="tabpanel" aria-labelledby="add-usb-camera-tab">
+                  <div class="form-group">
+                    <label for="addCameraPath">Device Path</label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" id="addCameraPath" aria-describedby="addCameraPathHelp" required>
+                      <div class="invalid-feedback">
+                        Please provide a valid path.
+                      </div>
+                      <div class="input-group-append">
+                        <button type="button" class="btn dropdown-toggle" id="addCameraConnectedPaths" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" disabled="true">
+                          Connected Camera
+                        </button>
+                        <div class="dropdown-menu" id="addCameraConnectedPathsList" aria-labelledby="addCameraConnectedPaths">
+                        </div>
+                      </div>
+                    </div>
+                    <small id="addCameraPathHelp" class="form-text text-muted">
+                      The format of the device path is platform dependent.  On Linux systems it should be something in "/dev", e.g. "/dev/video0".  The "Connected Camera" dropdown can be used to select a currently connected USB camera.
+                    </small>
+                  </div>
+                </div>
+                <div class="tab-pane" id="add-network-camera" role="tabpanel" aria-labelledby="add-network-camera-tab">
+                  <div class="form-group">
+                    <label for="addCameraUrls">Camera URL</label>
+                    <input type="text" class="form-control" id="addCameraUrls" required>
+                  </div>
+                  <div class="invalid-feedback">
+                    Please provide a valid URL.
+                  </div>
+                </div>
+              </div>
+              <button id="addCameraButton" type="button" class="btn btn-primary" disabled>
+                <span data-feather="plus-circle"></span>
+                Add
+              </button>
+            </form>
+          </div>
+
+          <!-- Vision Settings -->
+          <div class="tab-pane" id="camera-config" role="tabpanel" aria-labelledby="camera-config-tab">
+            <div class="card">
+              <div class="card-header">
+                <h5>USB Cameras</h5>
+              </div>
+              <div class="card-body">
+                <div class="accordion" id="cameras">
+                  <div class="card" style="display:none" id="cameraNEW">
+                    <div class="card-header">
+                      <div class="row align-items-center">
+                        <div class="col-auto mr-auto">
+                          <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#cameraBodyNEW">
+                            <h6 class="cameraTitle">Camera NEW</h6>
+                          </button>
+                          <span class="badge badge-secondary align-text-top cameraConnectionBadge">Disconnected</span>
+                        </div>
+                        <div class="col-auto">
+                          <a class="btn btn-sm btn-success cameraStream" href="" target="_blank" role="button">
+                            <span data-feather="play"></span>
+                            Open Stream
+                          </a>
+                          <button type="button" class="btn btn-sm btn-danger cameraRemove">
+                            <span data-feather="x"></span>
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="collapse" id="cameraBodyNEW" data-parent="#cameras">
+                      <div class="card-body">
+                        <form>
+                          <div class="form-row">
+                            <div class="form-group col col-4">
+                              <label for="cameraNameNEW">Name</label>
+                              <input type="text" class="form-control cameraName" id="cameraNameNEW">
+                            </div>
+                            <div class="form-group col">
+                              <label for="cameraPathNEW">Path</label>
+                              <div class="input-group">
+                                <input type="text" class="form-control cameraPath" id="cameraPathNEW">
+                                <div class="input-group-append">
+                                  <button type="button" class="btn dropdown-toggle cameraAlternatePaths" id="cameraAlternatePathsNEW" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" disabled="true">
+                                    Alternate Path
+                                  </button>
+                                  <div class="dropdown-menu cameraAlternatePathsList" aria-labelledby="cameraAlternatePathsNEW">
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="card">
+                            <div class="card-header">
+                              Camera Settings
+                            </div>
+                            <div class="card-body">
+                              <div class="form-group">
+                                <div class="custom-file">
+                                  <input type="file" class="custom-file-input cameraSettingsFile" accept=".json,text/json,application/json" id="cameraSettingsFileNEW">
+                                  <label class="custom-file-label" for="cameraSettingsFileNEW">Load Source Config From JSON File</label>
+                                </div>
+                              </div>
+                              <div class="form-group">
+                                <button class="btn btn-sm cameraCopyConfig" type="button">
+                                  <span data-feather="copy"></span>
+                                  Copy Source Config From Camera
+                                </button>
+                              </div>
+                              <div class="form-row">
+                                <div class="form-group col-auto">
+                                  <label for="cameraPixelFormatNEW">Pixel Format</label>
+                                  <select class="form-control cameraPixelFormat" id="cameraPixelFormatNEW">
+                                    <option value="mjpeg">MJPEG</option>
+                                    <option value="yuyv">YUYV</option>
+                                    <option value="rgb565">RGB565</option>
+                                    <option value="bgr">BGR</option>
+                                    <option value="gray">Gray</option>
+                                  </select>
+                                </div>
+                                <div class="form-group col-auto">
+                                  <label for="cameraWidthNEW">Width</label>
+                                  <input type="number" class="form-control cameraWidth" id="cameraWidthNEW" size="5">
+                                </div>
+                                <div class="form-group col-auto">
+                                  <label for="cameraHeightNEW">Height</label>
+                                  <input type="number" class="form-control cameraHeight" id="cameraHeightNEW" size="5">
+                                </div>
+                                <div class="form-group col-auto">
+                                  <label for="cameraFpsNEW">FPS</label>
+                                  <input type="number" class="form-control cameraFps" id="cameraFpsNEW" size="4">
+                                </div>
+                              </div>
+                              <div class="form-row">
+                                <div class="form-group col-auto">
+                                  <label for="cameraBrightnessNEW">Brightness</label>
+                                  <input type="text" class="form-control cameraBrightness" id="cameraBrightnessNEW" size="4">
+                                </div>
+                                <div class="form-group col-auto">
+                                  <label for="cameraWhiteBalanceNEW">White Balance</label>
+                                  <input type="text" class="form-control cameraWhiteBalance" id="cameraWhiteBalanceNEW" size="4">
+                                </div>
+                                <div class="form-group col-auto">
+                                  <label for="cameraExposureNEW">Exposure</label>
+                                  <input type="text" class="form-control cameraExposure" id="cameraExposureNEW" size="4">
+                                </div>
+                              </div>
+                              <div class="form-group">
+                                <label for="cameraPropertiesNEW">Custom Properties JSON</label>
+                                <textarea class="form-control cameraProperties" id="cameraPropertiesNEW" rows="3"></textarea>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="card">
+                            <div class="card-header">
+                              Video Stream Defaults
+                            </div>
+                            <div class="card-body">
+                              <div class="form-row">
+                                <div class="form-group col-auto">
+                                  <label for="streamWidthNEW">Width</label>
+                                  <input type="number" class="form-control streamWidth" id="streamWidthNEW" size="5">
+                                </div>
+                                <div class="form-group col-auto">
+                                  <label for="streamHeightNEW">Height</label>
+                                  <input type="number" class="form-control streamHeight" id="streamHeightNEW" size="5">
+                                </div>
+                                <div class="form-group col-auto">
+                                  <label for="streamFpsNEW">FPS</label>
+                                  <input type="number" class="form-control streamFps" id="streamFpsNEW" size="4">
+                                </div>
+                              </div>
+                              <div class="form-row">
+                                <div class="form-group col-auto">
+                                  <label for="streamCompressionNEW">Compression</label>
+                                  <input type="number" class="form-control streamCompression" id="streamWidthNEW" size="5">
+                                </div>
+                                <div class="form-group col-auto">
+                                  <label for="streamDefaultCompressionNEW">Default Compression</label>
+                                  <input type="number" class="form-control streamDefaultCompression" id="streamDefaultCompressionNEW" size="4">
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <h5>Switched Cameras</h5>
+              </div>
+              <div class="card-body">
+                <div class="accordion" id="switchedCameras">
+                  <div class="card" style="display:none" id="switchedCameraNEW">
+                    <div class="card-header">
+                      <div class="row align-items-center">
+                        <div class="col-auto mr-auto">
+                          <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#switchedCameraBodyNEW">
+                            <h6 class="cameraTitle">Switched Camera NEW</h6>
+                          </button>
+                        </div>
+                        <div class="col-auto">
+                          <a class="btn btn-sm btn-success cameraStream" href="" target="_blank" role="button">
+                            <span data-feather="play"></span>
+                            Open Stream
+                          </a>
+                          <button type="button" class="btn btn-sm btn-danger cameraRemove">
+                            <span data-feather="x"></span>
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="collapse" id="switchedCameraBodyNEW" data-parent="#switchedCameras">
+                      <div class="card-body">
+                        <form>
+                          <div class="form-row">
+                            <div class="form-group col col-4">
+                              <label for="switchedCameraNameNEW">Name</label>
+                              <input type="text" class="form-control cameraName" id="switchedCameraNameNEW">
+                            </div>
+                            <div class="form-group col">
+                              <label for="switchedCameraKeyNEW">NetworkTable Key</label>
+                              <input type="text" class="form-control cameraKey" id="switchedCameraKeyNEW">
+                            </div>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="container-fluid">
+              <div class="row">
+                <div class="col-auto mr-auto">
+                  <button type="button" class="btn btn-primary" id="visionSave">
+                    <span data-feather="save"></span>
+                    Save
+                  </button>
+                  <button type="button" class="btn btn-warning" id="visionDiscard">
+                    <span data-feather="x"></span>
+                    Discard Changes
+                  </button>
+                </div>
+                <div class="col-auto">
+                  <div class="dropdown">
+                    <button type="button" class="btn btn-info dropdown-toggle" id="addConnectedCamera" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" disabled="true">
+                      <span data-feather="plus"></span>
+                      Add Connected Camera
+                    </button>
+                    <div class="dropdown-menu" aria-labelledby="addConnectedCamera" id="addConnectedCameraList">
+                    </div>
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <div class="dropdown">
+                    <button type="button" class="btn btn-success dropdown-toggle" id="addCamera" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                      <span data-feather="plus"></span>
+                      Add Other Camera
+                    </button>
+                    <div class="dropdown-menu" aria-labelledby="addCamera" id="addCameraList">
+                      <button type="button" class="dropdown-item" id="addUsbCamera">
+                        USB Camera
+                      </button>
+                      <button type="button" class="dropdown-item" id="addSwitchedCamera">
+                        Switched Camera
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <footer class="app-footer">
+      <div>
+        <a href="https://docs.wpilib.org/en/stable/docs/software/vision-processing/index.html" target="_new">CameraServer</a>
+        <span>&copy; 2020 FIRST</span>
+      </div>
+      <div class="ml-auto">
+        <a href="https://github.com/wpilibsuite/allwpilib/releases" target="_new">GitHub</a>
+      </div>
+    </footer>
+
+    <script type="text/javascript" src="jquery-3.3.1.slim.min.js"></script>
+    <script type="text/javascript" src="popper.min.js"></script>
+    <script type="text/javascript" src="bootstrap.min.js"></script>
+    <script type="text/javascript" src="coreui.min.js"></script>
+    <script type="text/javascript" src="feather.min.js"></script>
+    <script>
+      feather.replace()
+    </script>
+    <script type="text/javascript" src="cameraserver.js"></script>
+  </body>
+</html>

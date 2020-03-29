@@ -1,0 +1,34 @@
+.feather {
+  width: 16px;
+  height: 16px;
+  vertical-align: text-bottom;
+}
+
+@-webkit-keyframes spinnow {
+    100% {
+        transform: rotate(360deg);
+        -webkit-transform: rotate(360deg);
+    }
+}
+@-moz-keyframes spinnow {
+    100% {
+        transform: rotate(360deg);
+        -moz-transform: rotate(360deg);
+    }
+}
+@-ms-keyframes spinnow {
+    100% {
+        transform: rotate(360deg);
+        -ms-transform: rotate(360deg);
+    }
+}
+
+.spin {
+  animation: spinnow 5s infinite linear;
+}
+
+.brand-icon {
+  width: 32px;
+  height: 32px;
+  -ms-interpolation-mode: bicubic;
+}

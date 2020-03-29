@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #include <functional>
+#include <initializer_list>
 #include <string>
 #include <vector>
 
@@ -18,6 +19,7 @@
 #include <wpi/SmallVector.h>
 #include <wpi/StringRef.h>
 #include <wpi/Twine.h>
+#include <wpi/deprecated.h>
 
 #include "cscore_c.h"
 
@@ -103,6 +105,51 @@ void to_json(wpi::json& j, const VideoMode& mode);
 void from_json(const wpi::json& j, VideoMode& mode);
 
 /**
+ * Server configuration
+ */
+struct ServerConfig {
+  ServerConfig() = default;
+  explicit ServerConfig(unsigned int port_) : port{port_} {}
+  ServerConfig(unsigned int port_, wpi::StringRef defaultSource_)
+      : port{port_}, defaultSource{defaultSource_} {}
+  ServerConfig(wpi::StringRef address_, unsigned int port_)
+      : address{address_}, port{port_} {}
+  ServerConfig(wpi::StringRef address_, unsigned int port_,
+               wpi::StringRef defaultSource_)
+      : address{address_}, port{port_}, defaultSource{defaultSource_} {}
+  ServerConfig(wpi::StringRef address_, unsigned int port_,
+               wpi::StringRef defaultSource_,
+               wpi::ArrayRef<std::string> onlySources_)
+      : address{address_},
+        port{port_},
+        defaultSource{defaultSource_},
+        onlySources{onlySources_.begin(), onlySources_.end()} {}
+  ServerConfig(wpi::StringRef address_, unsigned int port_,
+               wpi::StringRef defaultSource_,
+               std::initializer_list<std::string> onlySources_)
+      : address{address_},
+        port{port_},
+        defaultSource{defaultSource_},
+        onlySources{onlySources_} {}
+
+  // Listen address.  If empty, serves on all addresses.
+  std::string address;
+
+  // Listen port for this server.
+  unsigned int port = 0;
+
+  // Whether sources can be edited via this server.
+  bool editSources = true;
+
+  // If not empty, the source to stream when no source is specified in request
+  std::string defaultSource;
+
+  // If not empty, only allow specified sources to be streamed through this
+  // particular server
+  std::vector<std::string> onlySources;
+};
+
+/**
  * Listener event
  */
 struct RawEvent {
@@ -125,7 +172,12 @@ struct RawEvent {
     kTelemetryUpdated = CS_TELEMETRY_UPDATED,
     kSinkPropertyCreated = CS_SINK_PROPERTY_CREATED,
     kSinkPropertyValueUpdated = CS_SINK_PROPERTY_VALUE_UPDATED,
-    kSinkPropertyChoicesUpdated = CS_SINK_PROPERTY_CHOICES_UPDATED
+    kSinkPropertyChoicesUpdated = CS_SINK_PROPERTY_CHOICES_UPDATED,
+    kServerStarted = CS_SERVER_STARTED,
+    kServerStopped = CS_SERVER_STOPPED,
+    kServerPropertyCreated = CS_SERVER_PROPERTY_CREATED,
+    kServerPropertyValueUpdated = CS_SERVER_PROPERTY_VALUE_UPDATED,
+    kServerPropertyChoicesUpdated = CS_SERVER_PROPERTY_CHOICES_UPDATED
   };
 
   RawEvent() = default;
@@ -153,12 +205,16 @@ struct RawEvent {
         propertyKind{propertyKind_},
         value{value_},
         valueStr{valueStr_.str()} {}
+  RawEvent(const ServerConfig& serverConfig_, CS_Server server_,
+           RawEvent::Kind kind_)
+      : kind{kind_}, serverHandle{server_}, serverConfig{serverConfig_} {}
 
   Kind kind;
 
-  // Valid for kSource* and kSink* respectively
+  // Valid for kSource* and kSink* and kServer* respectively
   CS_Source sourceHandle = 0;
   CS_Sink sinkHandle = 0;
+  CS_Server serverHandle = 0;
 
   // Source/sink/property name
   std::string name;
@@ -171,6 +227,9 @@ struct RawEvent {
   CS_PropertyKind propertyKind;
   int value;
   std::string valueStr;
+
+  // Fields for kServerStarted and kServerStopped events
+  ServerConfig serverConfig;
 };
 
 /**
@@ -199,7 +258,7 @@ std::vector<std::string> GetEnumPropertyChoices(CS_Property property,
 /** @} */
 
 /**
- * @defgroup cscore_node_func Source/Sink Common Node Functions
+ * @defgroup cscore_node_func Source/Sink/Server Common Node Functions
  * @{
  */
 CS_Property GetNodeProperty(CS_Handle node, const wpi::Twine& name,
@@ -321,6 +380,7 @@ void SetSourceEnumPropertyChoices(CS_Source source, CS_Property property,
  * @defgroup cscore_sink_create_func Sink Creation Functions
  * @{
  */
+WPI_DEPRECATED("use StartServer")
 CS_Sink CreateMjpegServer(const wpi::Twine& name,
                           const wpi::Twine& listenAddress, int port,
                           CS_Status* status);
@@ -346,21 +406,43 @@ wpi::StringRef GetSinkDescription(CS_Sink sink, wpi::SmallVectorImpl<char>& buf,
 CS_Property GetSinkSourceProperty(CS_Sink sink, const wpi::Twine& name,
                                   CS_Status* status);
 
-void SetSinkSource(CS_Sink sink, CS_Source source, CS_Status* status);
-CS_Source GetSinkSource(CS_Sink sink, CS_Status* status);
-
 std::string GetSinkError(CS_Sink sink, CS_Status* status);
 wpi::StringRef GetSinkError(CS_Sink sink, wpi::SmallVectorImpl<char>& buf,
                             CS_Status* status);
 void SetSinkEnabled(CS_Sink sink, bool enabled, CS_Status* status);
+void SetSinkSource(CS_Sink sink, CS_Source source, CS_Status* status);
+CS_Source GetSinkSource(CS_Sink sink, CS_Status* status);
 /** @} */
 
 /**
  * @defgroup cscore_mjpegserver_func MjpegServer Sink Functions
  * @{
  */
+WPI_DEPRECATED("use GetServerConfig")
 std::string GetMjpegServerListenAddress(CS_Sink sink, CS_Status* status);
+WPI_DEPRECATED("use GetServerConfig")
 int GetMjpegServerPort(CS_Sink sink, CS_Status* status);
+/** @} */
+
+/**
+ * @defgroup cscore_server_func Network Server Functions
+ * @{
+ */
+CS_Server StartServer(const ServerConfig& config, CS_Status* status);
+CS_Server StartServerJson(wpi::StringRef config, CS_Status* status);
+CS_Server StartServerJson(const wpi::json& config, CS_Status* status);
+void StopServer(CS_Server server, CS_Status* status);
+void StopAllServers();
+
+ServerConfig GetServerConfig(CS_Server server, CS_Status* status);
+void SetServerResolution(CS_Server server, CS_Source source, int width,
+                         int height, CS_Status* status);
+void SetServerFPS(CS_Server server, CS_Source source, int fps,
+                  CS_Status* status);
+void SetServerJpegQuality(CS_Server server, CS_Source source, int quality,
+                          CS_Status* status);
+void SetServerDefaultJpegQuality(CS_Server server, CS_Source source,
+                                 int quality, CS_Status* status);
 /** @} */
 
 /**
@@ -417,6 +499,8 @@ wpi::ArrayRef<CS_Source> EnumerateSourceHandles(
     wpi::SmallVectorImpl<CS_Source>& vec, CS_Status* status);
 wpi::ArrayRef<CS_Sink> EnumerateSinkHandles(wpi::SmallVectorImpl<CS_Sink>& vec,
                                             CS_Status* status);
+wpi::ArrayRef<CS_Server> EnumerateServerHandles(
+    wpi::SmallVectorImpl<CS_Server>& vec, CS_Status* status);
 
 std::string GetHostname();
 

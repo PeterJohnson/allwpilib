@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------------*/
-/* Copyright (c) 2016-2018 FIRST. All Rights Reserved.                        */
+/* Copyright (c) 2016-2020 FIRST. All Rights Reserved.                        */
 /* Open Source Software - may be modified and shared by FRC teams. The code   */
 /* must be accompanied by the FIRST BSD license file in the root directory of */
 /* the project.                                                               */
@@ -24,8 +24,10 @@ class Handle {
     kProperty = 0x40,
     kSource,
     kSink,
+    kServer,
     kListener,
-    kSinkProperty
+    kSinkProperty,
+    kServerProperty
   };
   enum { kIndexMax = 0xffff };
 
@@ -55,7 +57,8 @@ class Handle {
   bool IsType(Type type) const { return type == GetType(); }
   int GetTypedIndex(Type type) const { return IsType(type) ? GetIndex() : -1; }
   int GetParentIndex() const {
-    return (IsType(Handle::kProperty) || IsType(Handle::kSinkProperty))
+    return (IsType(Handle::kProperty) || IsType(Handle::kSinkProperty) ||
+            IsType(Handle::kServerProperty))
                ? (static_cast<int>(m_handle) >> 16) & 0xff
                : -1;
   }

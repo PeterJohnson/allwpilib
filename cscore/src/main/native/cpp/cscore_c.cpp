@@ -279,6 +279,30 @@ CS_Property CS_GetSinkSourceProperty(CS_Sink sink, const char* name,
   return cs::GetSinkSourceProperty(sink, name, status);
 }
 
+CS_Server CS_StartServer(const CS_ServerConfig* config, CS_Status* status) {
+  cs::ServerConfig config2;
+  config2.address = config->address;
+  config2.port = config->port;
+  config2.editSources = config->editSources;
+  config2.defaultSource = config->defaultSource;
+  config2.onlySources.reserve(config->onlySourcesCount);
+  for (int i = 0; i < config->onlySourcesCount; ++i)
+    config2.onlySources.emplace_back(config->onlySources[i]);
+  return cs::StartServer(config2, status);
+}
+
+CS_Server CS_StartServerJson(const char* config, CS_Status* status) {
+  return cs::StartServerJson(config, status);
+}
+
+void CS_StopServer(CS_Server server, CS_Status* status) {
+  cs::StopServer(server, status);
+}
+
+void CS_StopAllServers(void) {
+  cs::StopAllServers();
+}
+
 void CS_SetListenerOnStart(void (*onStart)(void* data), void* data) {
   cs::SetListenerOnStart([=]() { onStart(data); });
 }

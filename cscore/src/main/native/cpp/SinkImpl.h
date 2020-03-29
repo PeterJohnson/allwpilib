@@ -20,10 +20,6 @@
 
 #include "SourceImpl.h"
 
-namespace wpi {
-class json;
-}  // namespace wpi
-
 namespace cs {
 
 class Frame;
@@ -57,9 +53,9 @@ class SinkImpl : public PropertyContainer {
   std::string GetError() const;
   wpi::StringRef GetError(wpi::SmallVectorImpl<char>& buf) const;
 
-  bool SetConfigJson(wpi::StringRef config, CS_Status* status) override;
-  bool SetConfigJsonObject(const wpi::json& config, CS_Status* status) override;
-  wpi::json GetConfigJsonObject(CS_Status* status) override;
+  bool SetConfigJson(const wpi::json& config, CS_Status* status) override;
+  wpi::json GetConfigJson(CS_Status* status) const override;
+  wpi::json GetInfoJson(CS_Status* status) const override;
 
   wpi::sig::Signal<> enabled;
   wpi::sig::Signal<> disabled;

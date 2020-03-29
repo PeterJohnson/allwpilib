@@ -169,7 +169,9 @@ public class CameraServerJNI {
   //
   // MjpegServer Sink Functions
   //
+  @Deprecated
   public static native String getMjpegServerListenAddress(int sink);
+  @Deprecated
   public static native int getMjpegServerPort(int sink);
 
   //
@@ -188,6 +190,23 @@ public class CameraServerJNI {
   }
   public static native String getSinkError(int sink);
   public static native void setSinkEnabled(int sink, boolean enabled);
+
+  //
+  // Network Server Functions
+  //
+  public static int startServer(ServerConfig config) {
+    return startServer(config.address, config.port, config.editSources, config.defaultSource, config.onlySources);
+  }
+  public static native int startServer(String address, int port, boolean editSources, String defaultSource, String[] onlySources);
+  public static native int startServerJson(String config);
+  public static native void stopServer(int server);
+  public static native void stopAllServers();
+
+  public static native ServerConfig getServerConfig(int server);
+  public static native void setServerResolution(int server, int source, int width, int height);
+  public static native void setServerFPS(int server, int source, int fps);
+  public static native void setServerJpegQuality(int server, int source, int quality);
+  public static native void setServerDefaultJpegQuality(int server, int source, int quality);
 
   //
   // Listener Functions

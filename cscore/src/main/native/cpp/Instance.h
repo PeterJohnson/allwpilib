@@ -17,6 +17,7 @@
 #include "cscore_cpp.h"
 
 namespace wpi {
+class json;
 class EventLoopRunner;
 class Logger;
 template <typename T>
@@ -28,6 +29,7 @@ namespace cs {
 class FramePool;
 class Notifier;
 class Telemetry;
+class ServerImpl;
 class SinkImpl;
 class SourceImpl;
 
@@ -48,6 +50,14 @@ struct SinkData {
   std::atomic_int refCount;
   std::atomic<CS_Source> sourceHandle;
   std::shared_ptr<SinkImpl> sink;
+};
+
+struct ServerData {
+  explicit ServerData(std::shared_ptr<ServerImpl> server_)
+      : refCount{0}, server{server_} {}
+
+  std::atomic_int refCount;
+  std::shared_ptr<ServerImpl> server;
 };
 
 class Instance {
@@ -79,11 +89,18 @@ class Instance {
 
   std::shared_ptr<SourceData> GetSource(CS_Source handle);
   std::shared_ptr<SinkData> GetSink(CS_Sink handle);
+  std::shared_ptr<ServerData> GetServer(CS_Server handle);
 
   CS_Source CreateSource(CS_SourceKind kind,
                          std::shared_ptr<SourceImpl> source);
 
   CS_Sink CreateSink(CS_SinkKind kind, std::shared_ptr<SinkImpl> sink);
+
+  CS_Server StartServer(const ServerConfig& config);
+  CS_Server StartServer(wpi::StringRef config);
+  CS_Server StartServer(const wpi::json& config);
+  void StopServer(CS_Server handle);
+  void StopAllServers();
 
   void DestroySource(CS_Source handle);
   void DestroySink(CS_Sink handle);
@@ -94,8 +111,15 @@ class Instance {
   wpi::ArrayRef<CS_Sink> EnumerateSinkHandles(
       wpi::SmallVectorImpl<CS_Sink>& vec);
 
+  wpi::ArrayRef<CS_Server> EnumerateServerHandles(
+      wpi::SmallVectorImpl<CS_Server>& vec);
+
   wpi::ArrayRef<CS_Sink> EnumerateSourceSinks(
       CS_Source source, wpi::SmallVectorImpl<CS_Sink>& vec);
+
+  static wpi::json GetSourceBasicJson(const SourceData& data);
+  wpi::json GetSourceBasicListJson() const;
+  wpi::json GetSourceInfoListJson() const;
 
  private:
   Instance();

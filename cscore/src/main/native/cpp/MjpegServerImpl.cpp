@@ -13,6 +13,7 @@
 #include <wpi/HttpUtil.h>
 #include <wpi/SmallString.h>
 #include <wpi/TCPAcceptor.h>
+#include <wpi/json.h>
 #include <wpi/raw_socket_istream.h>
 #include <wpi/raw_socket_ostream.h>
 
@@ -1012,6 +1013,14 @@ int GetMjpegServerPort(CS_Sink sink, CS_Status* status) {
 
 extern "C" {
 
+#if defined(_MSC_VER)
+#pragma warning( push )
+#pragma warning( disable : 4996 )
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 CS_Sink CS_CreateMjpegServer(const char* name, const char* listenAddress,
                              int port, CS_Status* status) {
   return cs::CreateMjpegServer(name, listenAddress, port, status);
@@ -1024,5 +1033,11 @@ char* CS_GetMjpegServerListenAddress(CS_Sink sink, CS_Status* status) {
 int CS_GetMjpegServerPort(CS_Sink sink, CS_Status* status) {
   return cs::GetMjpegServerPort(sink, status);
 }
+
+#if defined(_MSC_VER)
+#pragma warning( pop )
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 }  // extern "C"

@@ -1,0 +1,806 @@
+openapi: 3.0.0
+info:
+  title: cameraserver
+  version: '1.0'
+  license:
+    name: MIT
+  description: WPILib CameraServer
+  contact:
+    name: WPILib Development Team
+    url: 'https://wpilib.org/'
+    email: wpilib@wpi.edu
+tags:
+  - name: sources
+    description: Sources operations
+  - name: server
+    description: Server operations
+  - name: properties
+    description: Properties operations
+  - name: usb
+    description: USB operations
+servers:
+  - url: 'http://roborio-TEAM-frc.local:1181'
+paths:
+  '/sources/{sourceId}':
+    parameters:
+      - schema:
+          type: string
+        name: sourceId
+        in: path
+        required: true
+    get:
+      summary: Gets detailed information about a source
+      tags:
+        - sources
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Source'
+        '404':
+          description: Not Found
+      operationId: get-sources-sourceId
+      description: Gets detailed information about a source
+    delete:
+      summary: Deletes a source
+      operationId: delete-sources-sourceId
+      responses:
+        '204':
+          description: No Content
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      description: Deletes a source
+      tags:
+        - sources
+  /sources:
+    get:
+      summary: Gets list of all sources
+      tags:
+        - sources
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SourceBasic'
+      operationId: get-sources
+      description: Gets list of all sources
+    post:
+      summary: Creates a new source
+      operationId: post-sources
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceBasic'
+        '400':
+          description: Bad Request
+        '403':
+          description: Forbidden
+        '409':
+          description: Duplicate id
+      description: Creates a new source
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSource'
+        description: ''
+      tags:
+        - sources
+  '/sources/{sourceId}/status':
+    parameters:
+      - schema:
+          type: string
+        name: sourceId
+        in: path
+        required: true
+    get:
+      summary: Gets source status
+      tags:
+        - sources
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connected:
+                    type: boolean
+        '404':
+          description: Not Found
+      operationId: get-sources-sourceId-status
+      description: Gets source status
+  '/sources/{sourceId}/mode':
+    parameters:
+      - schema:
+          type: string
+        name: sourceId
+        in: path
+        required: true
+    get:
+      summary: Gets source video mode
+      tags:
+        - sources
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mode'
+        '404':
+          description: Not Found
+      operationId: get-sources-sourceId-mode
+      description: Gets source video mode
+    put:
+      summary: Sets source video mode
+      operationId: put-sources-sourceId-mode
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+        '404':
+          description: Not Found
+      description: Sets source video mode
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Mode'
+      tags:
+        - sources
+    patch:
+      summary: Updates source video mode
+      operationId: patch-sources-sourceId-mode
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+        '404':
+          description: Not Found
+      description: Updates source video mode
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Mode'
+        description: ''
+      tags:
+        - sources
+  '/sources/{sourceId}/properties':
+    parameters:
+      - schema:
+          type: string
+        name: sourceId
+        in: path
+        required: true
+    get:
+      summary: Gets list of all source properties
+      tags:
+        - sources
+        - properties
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Property'
+        '404':
+          description: Not Found
+      operationId: get-sources-sourceId-properties
+      description: Gets list of all source properties
+  '/sources/{sourceId}/properties/{propertyId}':
+    parameters:
+      - schema:
+          type: string
+        name: sourceId
+        in: path
+        required: true
+      - schema:
+          type: string
+        name: propertyId
+        in: path
+        required: true
+    get:
+      summary: Gets source property info
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+        '404':
+          description: Not Found
+      operationId: get-sources-sourceId-properties-propertyId
+      description: Gets source property info
+  '/sources/{sourceId}/properties/{propertyId}/value':
+    parameters:
+      - schema:
+          type: string
+        name: sourceId
+        in: path
+        required: true
+      - schema:
+          type: string
+        name: propertyId
+        in: path
+        required: true
+    get:
+      summary: Gets source property value
+      tags:
+        - sources
+        - properties
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: string
+                  - type: integer
+                  - type: boolean
+        '404':
+          description: Not Found
+      operationId: get-sources-sourceId-properties-propertyId-value
+      description: Gets property value
+    put:
+      summary: Sets source property value
+      operationId: put-sources-sourceId-properties-propertyId-value
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+        '404':
+          description: Not Found
+      description: Sets property value
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: string
+                - type: integer
+                - type: boolean
+        description: ''
+      tags:
+        - sources
+        - properties
+  /usbcameras:
+    get:
+      summary: Gets list of USB cameras
+      tags:
+        - usb
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UsbCameraInfo'
+      operationId: get-usbcameras
+      description: Gets list of USB cameras
+  /server/properties:
+    get:
+      summary: Gets list of all server properties
+      tags:
+        - server
+        - properties
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Property'
+      operationId: get-server-properties
+      description: Gets list of all server properties
+  '/server/properties/{propertyId}':
+    parameters:
+      - schema:
+          type: string
+        name: propertyId
+        in: path
+        required: true
+    get:
+      summary: Gets server property info
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+        '404':
+          description: Not Found
+      operationId: get-server-properties-propertyId
+      description: Gets server property info
+  '/server/properties/{propertyId}/value':
+    parameters:
+      - schema:
+          type: string
+        name: propertyId
+        in: path
+        required: true
+    get:
+      summary: Gets server property value
+      tags:
+        - server
+        - properties
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: string
+                  - type: integer
+                  - type: boolean
+        '404':
+          description: Not Found
+      operationId: get-server-properties-propertyId-value
+      description: Gets a server property
+    put:
+      summary: Sets server property value
+      operationId: put-server-properties-propertyId-value
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+        '404':
+          description: Not Found
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: string
+                - type: integer
+                - type: boolean
+        description: ''
+      description: Sets a server property
+      tags:
+        - server
+        - properties
+  /server/streams:
+    get:
+      summary: Gets information about active streams
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Stream'
+      operationId: get-server-streams
+      description: Gets information about active streams
+  '/sources/{sourceId}/usbpath':
+    parameters:
+      - schema:
+          type: string
+        name: sourceId
+        in: path
+        required: true
+    get:
+      summary: Gets source path
+      tags:
+        - sources
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+        '404':
+          description: Not Found
+      operationId: get-sources-sourceId-path
+      description: Gets source path (for USB sources)
+    put:
+      summary: Sets source path
+      operationId: put-sources-sourceId-path
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      description: Sets source path (for USB sources)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+        description: ''
+      tags:
+        - sources
+  '/sources/{sourceId}/urls':
+    parameters:
+      - schema:
+          type: string
+        name: sourceId
+        in: path
+        required: true
+    get:
+      summary: Gets source urls (for network sources)
+      tags:
+        - sources
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  format: uri
+        '404':
+          description: Not Found
+      operationId: get-sources-sourceId-url
+      description: Gets source urls (for network sources)
+    put:
+      summary: Sets source urls
+      operationId: put-sources-sourceId-url
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      tags:
+        - sources
+      description: Sets source urls (for network sources)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+                format: uri
+        description: ''
+components:
+  schemas:
+    SourceDetail:
+      allOf:
+        - $ref: '#/components/schemas/SourceBasic'
+        - type: object
+          properties:
+            connectionStrategy:
+              $ref: '#/components/schemas/ConnectionStrategy'
+            connected:
+              type: boolean
+            mode:
+              $ref: '#/components/schemas/Mode'
+            modes:
+              type: array
+              items:
+                $ref: '#/components/schemas/Mode'
+            actualFps:
+              type: number
+            actualDataRate:
+              type: number
+          required:
+            - connectionStrategy
+            - connected
+            - mode
+            - modes
+      description: ''
+      x-tags:
+        - sources
+    Mode:
+      title: Mode
+      type: object
+      properties:
+        pixelFormat:
+          type: string
+        width:
+          type: integer
+        height:
+          type: integer
+        fps:
+          type: integer
+      x-tags:
+        - sources
+    UsbCameraInfo:
+      title: UsbCameraInfo
+      type: object
+      properties:
+        dev:
+          type: integer
+        path:
+          type: string
+        name:
+          type: string
+        otherPaths:
+          type: array
+          items:
+            type: string
+        vendorId:
+          type: integer
+        productId:
+          type: integer
+      x-tags:
+        - usb
+    SourceBasic:
+      title: SourceBasic
+      type: object
+      x-tags:
+        - sources
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+        kind:
+          $ref: '#/components/schemas/SourceKind'
+      required:
+        - id
+        - kind
+    SourceKind:
+      type: string
+      title: SourceKind
+      enum:
+        - usb
+        - network
+        - image
+      x-tags:
+        - sources
+    ConnectionStrategy:
+      type: string
+      title: ConnectionStrategy
+      enum:
+        - auto
+        - open
+        - close
+      x-tags:
+        - sources
+      x-examples: {}
+    UsbSource:
+      allOf:
+        - $ref: '#/components/schemas/SourceDetail'
+        - type: object
+          properties:
+            usbPath:
+              type: string
+            usbCameraInfo:
+              $ref: '#/components/schemas/UsbCameraInfo'
+      x-tags:
+        - sources
+        - usb
+    NetworkSource:
+      title: NetworkSource
+      allOf:
+        - $ref: '#/components/schemas/SourceDetail'
+        - type: object
+          properties:
+            urls:
+              type: array
+              items:
+                type: string
+                format: uri
+          required:
+            - urls
+      x-tags:
+        - sources
+    Source:
+      title: Source
+      oneOf:
+        - $ref: '#/components/schemas/UsbSource'
+        - $ref: '#/components/schemas/NetworkSource'
+        - $ref: '#/components/schemas/SourceDetail'
+      discriminator:
+        propertyName: kind
+        mapping:
+          usb: '#/components/schemas/UsbSource'
+          network: '#/components/schemas/NetworkSource'
+          image: '#/components/schemas/SourceDetail'
+      x-tags:
+        - sources
+    Property:
+      title: Property
+      x-tags:
+        - properties
+      oneOf:
+        - $ref: '#/components/schemas/BooleanProperty'
+        - $ref: '#/components/schemas/IntegerProperty'
+        - $ref: '#/components/schemas/EnumProperty'
+        - $ref: '#/components/schemas/StringProperty'
+      discriminator:
+        propertyName: kind
+        mapping:
+          boolean: '#/components/schemas/BooleanProperty'
+          integer: '#/components/schemas/IntegerProperty'
+          enum: '#/components/schemas/EnumProperty'
+          string: '#/components/schemas/StringProperty'
+    PropertyKind:
+      type: string
+      title: PropertyKind
+      enum:
+        - boolean
+        - integer
+        - string
+        - enum
+      x-tags:
+        - properties
+    CreateNetworkSource:
+      title: CreateNetworkSource
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/SourceKind'
+        url:
+          oneOf:
+            - type: string
+              format: uri
+            - type: array
+              items:
+                type: string
+                format: uri
+      required:
+        - id
+        - kind
+        - url
+    CreateUsbSource:
+      title: CreateUsbSource
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/SourceKind'
+        path:
+          type: string
+      required:
+        - id
+        - kind
+        - path
+    CreateSource:
+      title: CreateSource
+      oneOf:
+        - $ref: '#/components/schemas/CreateUsbSource'
+        - $ref: '#/components/schemas/CreateNetworkSource'
+      discriminator:
+        propertyName: kind
+        mapping:
+          network: '#/components/schemas/CreateNetworkSource'
+          usb: '#/components/schemas/CreateUsbSource'
+    StringProperty:
+      title: StringProperty
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/PropertyKind'
+        value:
+          type: string
+        default:
+          type: string
+      required:
+        - id
+        - kind
+        - value
+    BooleanProperty:
+      title: BooleanProperty
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/PropertyKind'
+        value:
+          type: boolean
+        default:
+          type: boolean
+      required:
+        - id
+        - kind
+        - value
+    IntegerProperty:
+      title: IntegerProperty
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/PropertyKind'
+        value:
+          type: integer
+        min:
+          type: integer
+        max:
+          type: integer
+        step:
+          type: integer
+        default:
+          type: integer
+      required:
+        - id
+        - kind
+        - value
+    EnumProperty:
+      title: EnumProperty
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/PropertyKind'
+        value:
+          type: integer
+        default:
+          type: integer
+        choices:
+          type: array
+          items:
+            type: string
+      required:
+        - id
+        - kind
+        - value
+    Stream:
+      title: Stream
+      type: object
+      properties:
+        sourceId:
+          type: string
+        remoteIp:
+          type: string
+          format: ipv4
+        remotePort:
+          type: integer
+        actualFps:
+          type: number
+        actualDataRate:
+          type: number
+        config:
+          type: object
+          properties:
+            fps:
+              type: number
+            width:
+              type: integer
+            height:
+              type: integer
+            quality:
+              type: integer

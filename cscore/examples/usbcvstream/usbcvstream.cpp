@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------------*/
-/* Copyright (c) 2017-2019 FIRST. All Rights Reserved.                        */
+/* Copyright (c) 2017-2020 FIRST. All Rights Reserved.                        */
 /* Open Source Software - may be modified and shared by FRC teams. The code   */
 /* must be accompanied by the FIRST BSD license file in the root directory of */
 /* the project.                                                               */
@@ -16,13 +16,10 @@
 int main() {
   cs::UsbCamera camera{"usbcam", 0};
   camera.SetVideoMode(cs::VideoMode::kMJPEG, 320, 240, 30);
-  cs::MjpegServer mjpegServer{"httpserver", 8081};
-  mjpegServer.SetSource(camera);
   cs::CvSink cvsink{"cvsink"};
   cvsink.SetSource(camera);
   cs::CvSource cvsource{"cvsource", cs::VideoMode::kMJPEG, 320, 240, 30};
-  cs::MjpegServer cvMjpegServer{"cvhttpserver", 8082};
-  cvMjpegServer.SetSource(cvsource);
+  cs::VideoServer videoServer{8081};
 
   cv::Mat test;
   cv::Mat flip;

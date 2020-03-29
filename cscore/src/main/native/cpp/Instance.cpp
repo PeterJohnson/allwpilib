@@ -12,12 +12,14 @@
 #include <wpi/Path.h>
 #include <wpi/SmallString.h>
 #include <wpi/StringRef.h>
+#include <wpi/json.h>
 #include <wpi/raw_ostream.h>
 
 #include "FramePool.h"
 #include "Log.h"
 #include "NetworkListener.h"
 #include "Notifier.h"
+#include "ServerImpl.h"
 #include "SinkImpl.h"
 #include "SourceImpl.h"
 #include "Telemetry.h"
@@ -59,6 +61,7 @@ class Instance::Impl {
   NetworkListener networkListener;
   UnlimitedHandleResource<Handle, SourceData, Handle::kSource> sources;
   UnlimitedHandleResource<Handle, SinkData, Handle::kSink> sinks;
+  UnlimitedHandleResource<Handle, ServerData, Handle::kServer> servers;
   wpi::EventLoopRunner eventLoop;
   FramePool framePool;
 };
@@ -69,6 +72,9 @@ Instance::Instance() : m_impl(new Impl) {
       [=] { m_impl->notifier.Notify(RawEvent::kNetworkInterfacesChanged); });
   m_impl->telemetry.telemetryUpdated.connect(
       [=] { m_impl->notifier.Notify(RawEvent::kTelemetryUpdated); });
+
+  m_impl->eventLoop.ExecAsync(
+      [this](wpi::uv::Loop& loop) { m_impl->notifier.StartLoop(loop); });
 }
 
 Instance::~Instance() {}
@@ -82,6 +88,7 @@ void Instance::Shutdown() {
   m_impl->eventLoop.Stop();
   m_impl->sinks.FreeAll();
   m_impl->sources.FreeAll();
+  m_impl->servers.FreeAll();
   m_impl->networkListener.Stop();
   m_impl->telemetry.Stop();
   m_impl->notifier.Stop();
@@ -129,6 +136,10 @@ std::shared_ptr<SourceData> Instance::GetSource(CS_Source handle) {
 
 std::shared_ptr<SinkData> Instance::GetSink(CS_Sink handle) {
   return m_impl->sinks.Get(handle);
+}
+
+std::shared_ptr<ServerData> Instance::GetServer(CS_Server handle) {
+  return m_impl->servers.Get(handle);
 }
 
 static void NotifySourceProperty(Notifier& notifier, CS_Handle handle,
@@ -235,6 +246,43 @@ CS_Sink Instance::CreateSink(CS_SinkKind kind, std::shared_ptr<SinkImpl> sink) {
   return handle;
 }
 
+CS_Server Instance::StartServer(const ServerConfig& config) {
+  auto handle = m_impl->servers.Allocate(
+      std::make_shared<ServerImpl>(config, m_impl->eventLoop, m_impl->logger));
+  m_impl->notifier.Notify(RawEvent{config, handle, RawEvent::kServerStarted});
+  m_impl->servers.Get(handle)->server->Start();
+  return handle;
+}
+
+CS_Server Instance::StartServer(wpi::StringRef config) {
+  ServerConfig c = ServerImpl::ParseConfig(config);
+  auto handle = m_impl->servers.Allocate(
+      std::make_shared<ServerImpl>(c, m_impl->eventLoop, m_impl->logger));
+  m_impl->notifier.Notify(RawEvent{c, handle, RawEvent::kServerStarted});
+  m_impl->servers.Get(handle)->server->Start();
+  return handle;
+}
+
+CS_Server Instance::StartServer(const wpi::json& config) {
+  ServerConfig c = ServerImpl::ParseConfig(config);
+  auto handle = m_impl->servers.Allocate(
+      std::make_shared<ServerImpl>(c, m_impl->eventLoop, m_impl->logger));
+  m_impl->notifier.Notify(RawEvent{c, handle, RawEvent::kServerStarted});
+  m_impl->servers.Get(handle)->server->Start();
+  return handle;
+}
+
+void Instance::StopServer(CS_Server handle) {
+  if (auto data = m_impl->servers.Free(handle)) {
+    m_impl->notifier.Notify(
+        RawEvent{data->server->GetConfig(), handle, RawEvent::kServerStopped});
+  }
+}
+
+void Instance::StopAllServers() {
+  m_impl->servers.FreeAll();
+}
+
 void Instance::DestroySource(CS_Source handle) {
   if (auto data = m_impl->sources.Free(handle)) {
     m_impl->notifier.Notify(
@@ -259,6 +307,11 @@ wpi::ArrayRef<CS_Sink> Instance::EnumerateSinkHandles(
   return m_impl->sinks.GetAll(vec);
 }
 
+wpi::ArrayRef<CS_Server> Instance::EnumerateServerHandles(
+    wpi::SmallVectorImpl<CS_Server>& vec) {
+  return m_impl->servers.GetAll(vec);
+}
+
 wpi::ArrayRef<CS_Sink> Instance::EnumerateSourceSinks(
     CS_Source source, wpi::SmallVectorImpl<CS_Sink>& vec) {
   vec.clear();
@@ -266,4 +319,42 @@ wpi::ArrayRef<CS_Sink> Instance::EnumerateSourceSinks(
     if (source == data.sourceHandle.load()) vec.push_back(sinkHandle);
   });
   return vec;
+}
+
+wpi::json Instance::GetSourceBasicJson(const SourceData& data) {
+  wpi::StringRef kind;
+  switch (data.kind) {
+    case CS_SOURCE_USB:
+      kind = "usb";
+      break;
+    case CS_SOURCE_NETWORK:
+      kind = "network";
+      break;
+    case CS_SOURCE_IMAGE:
+      kind = "image";
+      break;
+    default:
+      kind = "unknown";
+      break;
+  }
+  return {{"id", data.source->GetName()},
+          {"description", data.source->GetDescription()},
+          {"kind", kind}};
+}
+
+wpi::json Instance::GetSourceBasicListJson() const {
+  wpi::json j = wpi::json::array();
+  m_impl->sources.ForEach([&](CS_Source, const SourceData& data) {
+    j.emplace_back(GetSourceBasicJson(data));
+  });
+  return j;
+}
+
+wpi::json Instance::GetSourceInfoListJson() const {
+  wpi::json j = wpi::json::array();
+  m_impl->sources.ForEach([&](CS_Source handle, const SourceData& data) {
+    CS_Status status = 0;
+    j.emplace_back(data.source->GetInfoJson(&status));
+  });
+  return j;
 }

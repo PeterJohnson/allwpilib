@@ -9,7 +9,6 @@
 
 #include <wpi/json.h>
 
-#include "Log.h"
 #include "SourceImpl.h"
 
 using namespace cs;
@@ -103,31 +102,32 @@ wpi::StringRef SinkImpl::GetError(wpi::SmallVectorImpl<char>& buf) const {
   return wpi::StringRef{buf.data(), buf.size()};
 }
 
-bool SinkImpl::SetConfigJson(wpi::StringRef config, CS_Status* status) {
-  wpi::json j;
-  try {
-    j = wpi::json::parse(config);
-  } catch (const wpi::json::parse_error& e) {
-    SWARNING("SetConfigJson: parse error at byte " << e.byte << ": "
-                                                   << e.what());
-    *status = CS_PROPERTY_WRITE_FAILED;
-    return false;
-  }
-  return SetConfigJsonObject(j, status);
-}
-
-bool SinkImpl::SetConfigJsonObject(const wpi::json& config, CS_Status* status) {
+bool SinkImpl::SetConfigJson(const wpi::json& config, CS_Status* status) {
   if (config.count("properties") != 0)
-    SetPropertiesJson(config.at("properties"), m_logger, GetName(), status);
+    return SetPropertiesJson(config.at("properties"), m_logger, GetName(),
+                             status);
 
   return true;
 }
 
-wpi::json SinkImpl::GetConfigJsonObject(CS_Status* status) {
+wpi::json SinkImpl::GetConfigJson(CS_Status* status) const {
   wpi::json j;
 
-  wpi::json props = GetPropertiesJsonObject(status);
-  if (props.is_array()) j.emplace("properties", props);
+  wpi::json props = GetPropertiesJson(status);
+  if (props.is_array()) j.emplace("properties", std::move(props));
+
+  return j;
+}
+
+wpi::json SinkImpl::GetInfoJson(CS_Status* status) const {
+  wpi::json j;
+
+  j.emplace("name", GetName());
+  {
+    std::scoped_lock lock(m_mutex);
+    j.emplace("description", m_description);
+  }
+  j.emplace("enabled", IsEnabled());
 
   return j;
 }

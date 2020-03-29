@@ -27,10 +27,6 @@
 #include "PropertyContainer.h"
 #include "cscore_cpp.h"
 
-namespace wpi {
-class json;
-}  // namespace wpi
-
 namespace cs {
 
 class FramePool;
@@ -47,11 +43,17 @@ class SourceImpl : public PropertyContainer {
   wpi::StringRef GetName() const { return m_name; }
 
   void SetDescription(const wpi::Twine& description);
+  std::string GetDescription() const;
   wpi::StringRef GetDescription(wpi::SmallVectorImpl<char>& buf) const;
 
   void SetConnectionStrategy(CS_ConnectionStrategy strategy) {
     m_strategy = static_cast<int>(strategy);
   }
+
+  CS_ConnectionStrategy GetConnectionStrategy() const {
+    return static_cast<CS_ConnectionStrategy>(m_strategy.load());
+  }
+
   bool IsEnabled() const {
     return m_strategy == CS_CONNECTION_KEEP_OPEN ||
            (m_strategy == CS_CONNECTION_AUTO_MANAGE && m_numSinksEnabled > 0);
@@ -117,9 +119,9 @@ class SourceImpl : public PropertyContainer {
   virtual bool SetResolution(int width, int height, CS_Status* status);
   virtual bool SetFPS(int fps, CS_Status* status);
 
-  bool SetConfigJson(wpi::StringRef config, CS_Status* status) override;
-  bool SetConfigJsonObject(const wpi::json& config, CS_Status* status) override;
-  wpi::json GetConfigJsonObject(CS_Status* status) override;
+  bool SetConfigJson(const wpi::json& config, CS_Status* status) override;
+  wpi::json GetConfigJson(CS_Status* status) const override;
+  wpi::json GetInfoJson(CS_Status* status) const override;
 
   std::vector<VideoMode> EnumerateVideoModes(CS_Status* status) const;
 

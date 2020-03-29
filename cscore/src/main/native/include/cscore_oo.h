@@ -13,6 +13,8 @@
 #include <utility>
 #include <vector>
 
+#include <wpi/deprecated.h>
+
 #include "cscore_cpp.h"
 
 namespace cs {
@@ -33,6 +35,7 @@ class VideoEvent;
 class VideoNode;
 class VideoSink;
 class VideoSource;
+class VideoServer;
 
 /**
  * A source or sink property.
@@ -43,6 +46,7 @@ class VideoProperty {
   friend class VideoNode;
   friend class VideoSink;
   friend class VideoSource;
+  friend class VideoServer;
 
  public:
   enum Kind {
@@ -54,6 +58,8 @@ class VideoProperty {
   };
 
   VideoProperty() : m_status(0), m_handle(0), m_kind(kNone) {}
+  explicit VideoProperty(CS_Property handle);
+  VideoProperty(CS_Property handle, Kind kind);
 
   std::string GetName() const;
 
@@ -85,9 +91,6 @@ class VideoProperty {
   CS_Status GetLastStatus() const { return m_status; }
 
  private:
-  explicit VideoProperty(CS_Property handle);
-  VideoProperty(CS_Property handle, Kind kind);
-
   mutable CS_Status m_status;
   CS_Property m_handle;
   Kind m_kind;
@@ -847,6 +850,7 @@ class VideoSink : public VideoNode {
  */
 class MjpegServer : public VideoSink {
  public:
+  WPI_DEPRECATED("use VideoServer")
   MjpegServer() = default;
 
   /**
@@ -856,6 +860,7 @@ class MjpegServer : public VideoSink {
    * @param listenAddress TCP listen address (empty string for all addresses)
    * @param port TCP port number
    */
+  WPI_DEPRECATED("use VideoServer")
   MjpegServer(const wpi::Twine& name, const wpi::Twine& listenAddress,
               int port);
 
@@ -865,6 +870,7 @@ class MjpegServer : public VideoSink {
    * @param name Sink name (arbitrary unique identifier)
    * @param port TCP port number
    */
+  WPI_DEPRECATED("use VideoServer")
   MjpegServer(const wpi::Twine& name, int port);
 
   /**
@@ -955,6 +961,203 @@ class ImageSink : public VideoSink {
 };
 
 /**
+ * A network server for video.
+ */
+class VideoServer : public VideoNode {
+  friend class VideoEvent;
+
+ public:
+  VideoServer() : VideoNode(0), m_owned(false) {}
+
+  /**
+   * Create a network video server.  By default, the server will be stopped
+   * when this object is destroyed; call Detach() to keep the server running
+   * in the background.
+   *
+   * @param config server configuration
+   */
+  explicit VideoServer(const ServerConfig& config);
+
+  /**
+   * Create a network video server.  By default, the server will be stopped
+   * when this object is destroyed; call Detach() to keep the server running
+   * in the background.
+   *
+   * The format of the JSON input is:
+   *
+   * <pre>
+   * {
+   *     "address": "address",                   // optional
+   *     "port": port number,
+   *     "default source": "name",               // optional
+   *     "only sources": ["name1", "name2"],     // optional
+   *     "properties": [                         // optional
+   *         {
+   *             "name": "property name",
+   *             "value": property value
+   *         }
+   *     ]
+   * }
+   * </pre>
+   *
+   * @param config JSON server configuration
+   */
+  explicit VideoServer(wpi::StringRef config);
+
+  /**
+   * Create a network video server.  By default, the server will be stopped
+   * when this object is destroyed; call Detach() to keep the server running
+   * in the background.
+   *
+   * @param config JSON server configuration object
+   */
+  explicit VideoServer(const wpi::json& config);
+
+  /**
+   * Create a network video server.  By default, the server will be stopped
+   * when this object is destroyed; call Detach() to keep the server running
+   * in the background.  For more than one listen address, use the ServerConfig
+   * constructor.
+   *
+   * @param listenAddress TCP listen address (empty string for all addresses)
+   * @param port TCP port number
+   */
+  VideoServer(const wpi::Twine& listenAddress, unsigned int port);
+
+  /**
+   * Create a network video server.  By default, the server will be stopped
+   * when this object is destroyed; call Detach() to keep the server running
+   * in the background.  For more than one listen address, use the ServerConfig
+   * constructor.
+   *
+   * @param listenAddress TCP listen address (empty string for all addresses)
+   * @param port TCP port number
+   * @param defaultSource source to stream when no source is specified in
+   *                      request
+   */
+  VideoServer(const wpi::Twine& listenAddress, unsigned int port,
+              wpi::StringRef defaultSource);
+
+  /**
+   * Create a network video server.  By default, the server will be stopped
+   * when this object is destroyed; call Detach() to keep the server running
+   * in the background.
+   *
+   * @param port TCP port number
+   */
+  explicit VideoServer(unsigned int port);
+
+  /**
+   * Create a network video server.  By default, the server will be stopped
+   * when this object is destroyed; call Detach() to keep the server running
+   * in the background.
+   *
+   * @param port TCP port number
+   * @param defaultSource source to stream when no source is specified in
+   *                      request
+   */
+  VideoServer(unsigned int port, wpi::StringRef defaultSource);
+
+  VideoServer(VideoServer&&) noexcept;
+  VideoServer(const VideoServer&) = delete;
+  VideoServer& operator=(VideoServer&&) noexcept;
+  VideoServer& operator=(const VideoServer&) = delete;
+  ~VideoServer();
+
+  /**
+   * Detaches the server so it keeps running in the background even if
+   * this object is destroyed.
+   */
+  void Detach() { m_owned = false; }
+
+  /**
+   * Returns if this server instance is detached.
+   */
+  bool IsDetached() const { return !m_owned; }
+
+  /**
+   * Stops the server.
+   */
+  void Stop();
+
+  /**
+   * Stops all servers.
+   */
+  static void StopAll();
+
+  /**
+   * Gets server configuration.
+   */
+  ServerConfig GetConfig() const;
+
+  /**
+   * Get the listen address of the server.
+   */
+  std::string GetListenAddress() const;
+
+  /**
+   * Get the port number of the server.
+   */
+  unsigned int GetPort() const;
+
+  /**
+   * Set the stream resolution for clients that don't specify it.
+   *
+   * <p>Setting this different than the source resolution will result in
+   * increased CPU usage.
+   *
+   * @param source source name (if empty, applies to all sources)
+   * @param width width, 0 for unspecified
+   * @param height height, 0 for unspecified
+   */
+  void SetResolution(const VideoSource& source, int width, int height);
+
+  /**
+   * Set the stream frames per second (FPS) for clients that don't specify it.
+   *
+   * <p>It is not necessary to set this if it is the same as the source FPS.
+   *
+   * @param source source name (if empty, applies to all sources)
+   * @param fps FPS, 0 for unspecified
+   */
+  void SetFPS(const VideoSource& source, int fps);
+
+  /**
+   * Set the JPEG compression for clients that don't specify it.
+   *
+   * <p>Setting this will result in increased CPU usage for MJPEG source cameras
+   * as it will decompress and recompress the image instead of using the
+   * camera's MJPEG image directly.
+   *
+   * @param source source name (if empty, applies to all sources)
+   * @param quality JPEG compression quality (0-100), -1 for unspecified
+   */
+  void SetJpegQuality(const VideoSource& source, int quality);
+
+  /**
+   * Set the default compression used for non-MJPEG sources.  If not set,
+   * 80 is used.  This function has no effect on MJPEG source cameras; use
+   * SetCompression() instead to force recompression of MJPEG source images.
+   *
+   * @param source source name (if empty, applies to all sources)
+   * @param quality JPEG compression quality (0-100)
+   */
+  void SetDefaultJpegQuality(const VideoSource& source, int quality);
+
+  friend void swap(VideoServer& first, VideoServer& second) noexcept {
+    using std::swap;
+    swap(static_cast<VideoNode&>(first), static_cast<VideoNode&>(second));
+    swap(first.m_owned, second.m_owned);
+  }
+
+ private:
+  VideoServer(CS_Server handle, bool owned)
+      : VideoNode(handle), m_owned(owned) {}
+
+  bool m_owned = true;
+};
+
+/**
  * An event generated by the library and provided to event listeners.
  */
 class VideoEvent : public RawEvent {
@@ -968,6 +1171,11 @@ class VideoEvent : public RawEvent {
    * Get the sink associated with the event (if any).
    */
   VideoSink GetSink() const;
+
+  /**
+   * Get the server associated with the event (if any).
+   */
+  VideoServer GetServer() const;
 
   /**
    * Get the property associated with the event (if any).

@@ -10,6 +10,8 @@
 #include <queue>
 #include <vector>
 
+#include <wpi/EventLoopRunner.h>
+
 #include "Handle.h"
 #include "Instance.h"
 #include "SinkImpl.h"
@@ -99,6 +101,12 @@ void Notifier::Start() { m_owner.Start(m_on_start, m_on_exit); }
 
 void Notifier::Stop() { m_owner.Stop(); }
 
+void Notifier::StartLoop(wpi::uv::Loop& loop) {
+  m_async = RawEventAsync::Create(loop);
+  if (!m_async) return;
+  m_async->wakeup.connect([this](const RawEvent& event) { loopNotify(event); });
+}
+
 void Notifier::Thread::Main() {
   if (m_on_start) m_on_start();
 
@@ -150,6 +158,8 @@ void Notifier::RemoveListener(int uid) {
 }
 
 void Notifier::Notify(RawEvent&& event) {
+  if (m_async) m_async->Send(event);
+
   auto thr = m_owner.GetThread();
   if (!thr) return;
   thr->m_notifications.emplace(std::move(event));

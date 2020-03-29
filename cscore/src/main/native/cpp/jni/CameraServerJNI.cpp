@@ -29,9 +29,11 @@ using namespace wpi::java;
 
 // Used for callback.
 static JavaVM* jvm = nullptr;
+static JClass serverConfigCls;
 static JClass usbCameraInfoCls;
 static JClass videoModeCls;
 static JClass videoEventCls;
+static JClass videoSourceCls;
 static JClass rawFrameCls;
 static JException videoEx;
 static JException nullPointerEx;
@@ -41,9 +43,11 @@ static JException exceptionEx;
 static JNIEnv* listenerEnv = nullptr;
 
 static const JClassInit classes[] = {
+    {"edu/wpi/cscore/ServerConfig", &serverConfigCls},
     {"edu/wpi/cscore/UsbCameraInfo", &usbCameraInfoCls},
     {"edu/wpi/cscore/VideoMode", &videoModeCls},
     {"edu/wpi/cscore/VideoEvent", &videoEventCls},
+    {"edu/wpi/cscore/VideoSource", &videoSourceCls},
     {"edu/wpi/cscore/raw/RawFrame", &rawFrameCls}};
 
 static const JExceptionInit exceptions[] = {
@@ -220,6 +224,42 @@ static inline bool CheckStatus(JNIEnv* env, CS_Status status) {
   return status == CS_OK;
 }
 
+static jobject MakeJVideoSource(JNIEnv* env, CS_Source source) {
+  if (source == 0) return nullptr;
+  static jmethodID constructor =
+      env->GetMethodID(videoSourceCls, "<init>", "(I)V");
+  CS_Status status = 0;
+  return env->NewObject(videoSourceCls, constructor,
+                        static_cast<jint>(cs::CopyNode(source, &status)));
+}
+
+// Convert an array of CS_Source into a jarray of VideoSource
+jobjectArray MakeJVideoSourceArray(JNIEnv* env, wpi::ArrayRef<CS_Source> arr) {
+  if (arr.empty()) return nullptr;
+  jobjectArray jarr = env->NewObjectArray(arr.size(), videoSourceCls, nullptr);
+  if (!jarr) return nullptr;
+  for (size_t i = 0; i < arr.size(); ++i) {
+    JLocal<jobject> elem{env, MakeJVideoSource(env, arr[i])};
+    env->SetObjectArrayElement(jarr, i, elem.obj());
+  }
+  return jarr;
+}
+
+static jobject MakeJObject(JNIEnv* env, const cs::ServerConfig& config) {
+  static jmethodID constructor =
+      env->GetMethodID(serverConfigCls, "<init>",
+                       "(Ljava/lang/String;ILedu/wpi/cscore/VideoSource;"
+                       "[Ledu/wpi/cscore/VideoSource;Z)V");
+  JLocal<jstring> address(env, MakeJString(env, config.address));
+  JLocal<jobject> defaultSource(env, MakeJString(env, config.defaultSource));
+  JLocal<jobjectArray> onlySources(
+      env, MakeJStringArray(env, config.onlySources));
+  return env->NewObject(serverConfigCls, constructor, address.obj(),
+                        static_cast<jint>(config.port), defaultSource.obj(),
+                        onlySources.obj(),
+                        static_cast<jboolean>(config.editSources));
+}
+
 static jobject MakeJObject(JNIEnv* env, const cs::UsbCameraInfo& info) {
   static jmethodID constructor = env->GetMethodID(
       usbCameraInfoCls, "<init>",
@@ -268,6 +308,14 @@ static jobject MakeJObject(JNIEnv* env, const cs::RawEvent& event) {
 }
 
 extern "C" {
+
+#if defined(_MSC_VER)
+#pragma warning( push )
+#pragma warning( disable : 4996 )
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 
 /*
  * Class:     edu_wpi_cscore_CameraServerJNI
@@ -1606,6 +1654,148 @@ Java_edu_wpi_cscore_CameraServerJNI_setSinkEnabled
 
 /*
  * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    startServer
+ * Signature: (Ljava/lang/String;IZLjava/lang/String;[Ljava/lang/Object;)I
+ */
+JNIEXPORT jint JNICALL Java_edu_wpi_cscore_CameraServerJNI_startServer
+  (JNIEnv* env, jclass, jstring address, jint port, jboolean editSources, jstring defaultSource, jobjectArray onlySources)
+{
+  cs::ServerConfig config;
+
+  config.address = JStringRef{env, address}.str();
+  config.port = port;
+  config.editSources = editSources;
+  if (defaultSource)
+    config.defaultSource = JStringRef{env, defaultSource}.str();
+
+  if (!onlySources) {
+    nullPointerEx.Throw(env, "onlySources cannot be null");
+    return 0;
+  }
+  size_t len = env->GetArrayLength(onlySources);
+  config.onlySources.reserve(len);
+  for (size_t i = 0; i < len; ++i) {
+    JLocal<jstring> elem{
+        env, static_cast<jstring>(env->GetObjectArrayElement(onlySources, i))};
+    if (!elem) {
+      // TODO
+      return 0;
+    }
+    config.onlySources.emplace_back(JStringRef{env, elem}.str());
+  }
+
+  CS_Status status = 0;
+  auto server = cs::StartServer(config, &status);
+  if (!CheckStatus(env, status)) return 0;
+  return server;
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    startServerJson
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_edu_wpi_cscore_CameraServerJNI_startServerJson
+  (JNIEnv* env, jclass, jstring config)
+{
+  CS_Status status = 0;
+  auto server = cs::StartServerJson(JStringRef{env, config}.str(), &status);
+  if (!CheckStatus(env, status)) return 0;
+  return server;
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    stopServer
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_edu_wpi_cscore_CameraServerJNI_stopServer
+  (JNIEnv* env, jclass, jint server)
+{
+  CS_Status status = 0;
+  cs::StopServer(server, &status);
+  CheckStatus(env, status);
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    stopAllServers
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_edu_wpi_cscore_CameraServerJNI_stopAllServers
+  (JNIEnv*, jclass)
+{
+  cs::StopAllServers();
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    getServerConfig
+ * Signature: (I)Ledu/wpi/cscore/ServerConfig;
+ */
+JNIEXPORT jobject JNICALL Java_edu_wpi_cscore_CameraServerJNI_getServerConfig
+  (JNIEnv* env, jclass, jint server)
+{
+  CS_Status status = 0;
+  auto config = cs::GetServerConfig(server, &status);
+  if (!CheckStatus(env, status)) return nullptr;
+  return MakeJObject(env, config);
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    setServerResolution
+ * Signature: (IIII)V
+ */
+JNIEXPORT void JNICALL Java_edu_wpi_cscore_CameraServerJNI_setServerResolution
+  (JNIEnv* env, jclass, jint server, jint source, jint width, jint height)
+{
+  CS_Status status = 0;
+  cs::SetServerResolution(server, source, width, height, &status);
+  CheckStatus(env, status);
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    setServerFPS
+ * Signature: (III)V
+ */
+JNIEXPORT void JNICALL Java_edu_wpi_cscore_CameraServerJNI_setServerFPS
+  (JNIEnv* env, jclass, jint server, jint source, jint fps)
+{
+  CS_Status status = 0;
+  cs::SetServerFPS(server, source, fps, &status);
+  CheckStatus(env, status);
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    setServerJpegQuality
+ * Signature: (III)V
+ */
+JNIEXPORT void JNICALL Java_edu_wpi_cscore_CameraServerJNI_setServerJpegQuality
+  (JNIEnv* env, jclass, jint server, jint source, jint quality)
+{
+  CS_Status status = 0;
+  cs::SetServerJpegQuality(server, source, quality, &status);
+  CheckStatus(env, status);
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    setServerDefaultJpegQuality
+ * Signature: (III)V
+ */
+JNIEXPORT void JNICALL Java_edu_wpi_cscore_CameraServerJNI_setServerDefaultJpegQuality
+  (JNIEnv* env, jclass, jint server, jint source, jint quality)
+{
+  CS_Status status = 0;
+  cs::SetServerDefaultJpegQuality(server, source, quality, &status);
+  CheckStatus(env, status);
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
  * Method:    addListener
  * Signature: (Ljava/lang/Object;IZ)I
  */
@@ -1902,5 +2092,11 @@ Java_edu_wpi_cscore_CameraServerJNI_freeRawFrame
       reinterpret_cast<cs::RawFrame*>(static_cast<intptr_t>(rawFrame));
   delete ptr;
 }
+
+#if defined(_MSC_VER)
+#pragma warning( pop )
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 }  // extern "C"

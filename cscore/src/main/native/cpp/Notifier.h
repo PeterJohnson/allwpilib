@@ -11,6 +11,8 @@
 #include <functional>
 
 #include <wpi/SafeThread.h>
+#include <wpi/Signal.h>
+#include <wpi/uv/Async.h>
 
 #include "cscore_cpp.h"
 
@@ -21,10 +23,14 @@ class Notifier {
 
  public:
   Notifier();
+  Notifier(const Notifier&) = delete;
+  Notifier& operator=(const Notifier&) = delete;
   ~Notifier();
 
   void Start();
   void Stop();
+
+  void StartLoop(wpi::uv::Loop& loop);
 
   static bool destroyed() { return s_destroyed; }
 
@@ -38,6 +44,9 @@ class Notifier {
   void Notify(RawEvent&& event);
   void Notify(RawEvent::Kind eventKind) { Notify(RawEvent{eventKind}); }
 
+  // notify on event loop
+  wpi::sig::Signal<const RawEvent&> loopNotify;
+
  private:
   class Thread;
   wpi::SafeThreadOwner<Thread> m_owner;
@@ -45,6 +54,9 @@ class Notifier {
   std::function<void()> m_on_start;
   std::function<void()> m_on_exit;
   static bool s_destroyed;
+
+  using RawEventAsync = wpi::uv::Async<RawEvent>;
+  std::shared_ptr<RawEventAsync> m_async;
 };
 
 }  // namespace cs

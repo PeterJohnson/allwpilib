@@ -37,6 +37,7 @@ class PropertyContainer {
  public:
   virtual ~PropertyContainer() = default;
 
+  bool PropertyExists(const wpi::Twine& name) const;
   int GetPropertyIndex(const wpi::Twine& name) const;
   wpi::ArrayRef<int> EnumerateProperties(wpi::SmallVectorImpl<int>& vec,
                                          CS_Status* status) const;
@@ -57,15 +58,22 @@ class PropertyContainer {
   std::vector<std::string> GetEnumPropertyChoices(int property,
                                                   CS_Status* status) const;
 
-  bool SetPropertiesJson(const wpi::json& config, wpi::Logger& logger,
+  bool SetPropertyValueJson(wpi::StringRef name, const wpi::json& value,
+                            wpi::Logger& logger, wpi::StringRef logName,
+                            CS_Status* status);
+  bool SetPropertyJson(const wpi::json& j, wpi::Logger& logger,
+                       wpi::StringRef logName, CS_Status* status);
+  bool SetPropertiesJson(const wpi::json& j, wpi::Logger& logger,
                          wpi::StringRef logName, CS_Status* status);
-  wpi::json GetPropertiesJsonObject(CS_Status* status);
+  wpi::json GetPropertyValueJson(int property, CS_Status* status) const;
+  wpi::json GetPropertyJson(int property, CS_Status* status) const;
+  wpi::json GetPropertiesJson(CS_Status* status) const;
+  wpi::json GetPropertyDetailJson(int property, CS_Status* status) const;
+  wpi::json GetPropertiesDetailJson(CS_Status* status) const;
 
-  virtual bool SetConfigJson(wpi::StringRef config, CS_Status* status) = 0;
-  virtual bool SetConfigJsonObject(const wpi::json& config,
-                                   CS_Status* status) = 0;
-  std::string GetConfigJson(CS_Status* status);
-  virtual wpi::json GetConfigJsonObject(CS_Status* status) = 0;
+  virtual bool SetConfigJson(const wpi::json& config, CS_Status* status) = 0;
+  virtual wpi::json GetConfigJson(CS_Status* status) const = 0;
+  virtual wpi::json GetInfoJson(CS_Status* status) const = 0;
 
   /**
    * Parameters are property index and property data.

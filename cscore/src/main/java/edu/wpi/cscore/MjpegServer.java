@@ -9,7 +9,10 @@ package edu.wpi.cscore;
 
 /**
  * A sink that acts as a MJPEG-over-HTTP network server.
+ *
+ * @deprecated Use VideoServer instead.
  */
+@Deprecated(since = "2020", forRemoval = true)
 public class MjpegServer extends VideoSink {
   /**
    * Create a MJPEG-over-HTTP server sink.
