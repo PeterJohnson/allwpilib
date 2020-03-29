@@ -5,7 +5,7 @@
 /* the project.                                                               */
 /*----------------------------------------------------------------------------*/
 
-#include "CvSourceImpl.h"
+#include "ImageSourceImpl.h"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -19,16 +19,92 @@
 #include "Notifier.h"
 #include "c_util.h"
 #include "cscore_cpp.h"
+#include "cscore_raw.h"
 
 using namespace cs;
 
-CvSourceImpl::CvSourceImpl(const wpi::Twine& name, wpi::Logger& logger,
-                           Notifier& notifier, const VideoMode& mode)
-    : ConfigurableSourceImpl{name, logger, notifier, mode} {}
+ImageSourceImpl::ImageSourceImpl(const wpi::Twine& name, wpi::Logger& logger,
+                                 Notifier& notifier, const VideoMode& mode)
+    : SourceImpl{name, logger, notifier} {
+  m_mode = mode;
+  m_videoModes.push_back(m_mode);
+}
 
-CvSourceImpl::~CvSourceImpl() {}
+ImageSourceImpl::~ImageSourceImpl() {}
 
-void CvSourceImpl::PutFrame(cv::Mat& image) {
+void ImageSourceImpl::Start() {
+  m_notifier.NotifySource(*this, CS_SOURCE_CONNECTED);
+  m_notifier.NotifySource(*this, CS_SOURCE_VIDEOMODES_UPDATED);
+  m_notifier.NotifySourceVideoMode(*this, m_mode);
+}
+
+bool ImageSourceImpl::SetVideoMode(const VideoMode& mode, CS_Status* status) {
+  {
+    std::scoped_lock lock(m_mutex);
+    m_mode = mode;
+    m_videoModes[0] = mode;
+  }
+  m_notifier.NotifySourceVideoMode(*this, mode);
+  return true;
+}
+
+void ImageSourceImpl::NumSinksChanged() {
+  // ignore
+}
+
+void ImageSourceImpl::NumSinksEnabledChanged() {
+  // ignore
+}
+
+void ImageSourceImpl::NotifyError(const wpi::Twine& msg) {
+  PutError(msg, wpi::Now());
+}
+
+int ImageSourceImpl::CreateProperty(const wpi::Twine& name,
+                                    CS_PropertyKind kind, int minimum,
+                                    int maximum, int step, int defaultValue,
+                                    int value) {
+  std::scoped_lock lock(m_mutex);
+  int ndx = CreateOrUpdateProperty(name,
+                                   [=] {
+                                     return std::make_unique<PropertyImpl>(
+                                         name, kind, minimum, maximum, step,
+                                         defaultValue, value);
+                                   },
+                                   [&](PropertyImpl& prop) {
+                                     // update all but value
+                                     prop.propKind = kind;
+                                     prop.minimum = minimum;
+                                     prop.maximum = maximum;
+                                     prop.step = step;
+                                     prop.defaultValue = defaultValue;
+                                     value = prop.value;
+                                   });
+  m_notifier.NotifySourceProperty(*this, CS_SOURCE_PROPERTY_CREATED, name, ndx,
+                                  kind, value, wpi::Twine{});
+  return ndx;
+}
+
+void ImageSourceImpl::SetEnumPropertyChoices(int property,
+                                             wpi::ArrayRef<std::string> choices,
+                                             CS_Status* status) {
+  std::scoped_lock lock(m_mutex);
+  auto prop = GetProperty(property);
+  if (!prop) {
+    *status = CS_INVALID_PROPERTY;
+    return;
+  }
+  if (prop->propKind != CS_PROP_ENUM) {
+    *status = CS_WRONG_PROPERTY_TYPE;
+    return;
+  }
+  prop->enumChoices = choices;
+  m_notifier.NotifySourceProperty(*this, CS_SOURCE_PROPERTY_CHOICES_UPDATED,
+                                  prop->name, property, CS_PROP_ENUM,
+                                  prop->value, wpi::Twine{});
+}
+
+void ImageSourceImpl::PutFrame(cv::Mat& image) {
   // We only support 8-bit images; convert if necessary.
   cv::Mat finalImage;
   if (image.depth() == CV_8U)
@@ -61,54 +137,87 @@ void CvSourceImpl::PutFrame(cv::Mat& image) {
   SourceImpl::PutFrame(std::move(dest), wpi::Now());
 }
 
+void ImageSourceImpl::PutFrame(const CS_RawFrame& image) {
+  int type;
+  switch (image.pixelFormat) {
+    case VideoMode::kYUYV:
+    case VideoMode::kRGB565:
+      type = CV_8UC2;
+      break;
+    case VideoMode::kBGR:
+      type = CV_8UC3;
+      break;
+    case VideoMode::kGray:
+    case VideoMode::kMJPEG:
+    default:
+      type = CV_8UC1;
+      break;
+  }
+  cv::Mat finalImage{image.height, image.width, type, image.data};
+  std::unique_ptr<Image> dest =
+      AllocImage(static_cast<VideoMode::PixelFormat>(image.pixelFormat),
+                 image.width, image.height, image.totalData);
+  finalImage.copyTo(dest->AsMat());
+
+  SourceImpl::PutFrame(std::move(dest), wpi::Now());
+}
+
 namespace cs {
 
-CS_Source CreateCvSource(const wpi::Twine& name, const VideoMode& mode,
-                         CS_Status* status) {
+CS_Source CreateImageSource(const wpi::Twine& name, const VideoMode& mode,
+                            CS_Status* status) {
   auto& inst = Instance::GetInstance();
   return inst.CreateSource(
-      CS_SOURCE_CV,
-      std::make_shared<CvSourceImpl>(name, inst.logger, inst.notifier, mode));
+      CS_SOURCE_IMAGE, std::make_shared<ImageSourceImpl>(name, inst.logger,
+                                                         inst.notifier, mode));
 }
 
 void PutSourceFrame(CS_Source source, cv::Mat& image, CS_Status* status) {
   auto data = Instance::GetInstance().GetSource(source);
-  if (!data || data->kind != CS_SOURCE_CV) {
+  if (!data || data->kind != CS_SOURCE_IMAGE) {
     *status = CS_INVALID_HANDLE;
     return;
   }
-  static_cast<CvSourceImpl&>(*data->source).PutFrame(image);
+  static_cast<ImageSourceImpl&>(*data->source).PutFrame(image);
 }
 
-static constexpr unsigned SourceMask = CS_SINK_CV | CS_SINK_RAW;
+void PutSourceFrame(CS_Source source, const CS_RawFrame& image,
+                    CS_Status* status) {
+  auto data = Instance::GetInstance().GetSource(source);
+  if (!data || data->kind != CS_SOURCE_IMAGE) {
+    *status = CS_INVALID_HANDLE;
+    return;
+  }
+  static_cast<ImageSourceImpl&>(*data->source).PutFrame(image);
+}
 
 void NotifySourceError(CS_Source source, const wpi::Twine& msg,
                        CS_Status* status) {
   auto data = Instance::GetInstance().GetSource(source);
-  if (!data || (data->kind & SourceMask) == 0) {
+  if (!data || (data->kind & CS_SOURCE_IMAGE) == 0) {
     *status = CS_INVALID_HANDLE;
     return;
   }
-  static_cast<CvSourceImpl&>(*data->source).NotifyError(msg);
+  static_cast<ImageSourceImpl&>(*data->source).NotifyError(msg);
 }
 
 void SetSourceConnected(CS_Source source, bool connected, CS_Status* status) {
   auto data = Instance::GetInstance().GetSource(source);
-  if (!data || (data->kind & SourceMask) == 0) {
+  if (!data || (data->kind & CS_SOURCE_IMAGE) == 0) {
     *status = CS_INVALID_HANDLE;
     return;
   }
-  static_cast<CvSourceImpl&>(*data->source).SetConnected(connected);
+  static_cast<ImageSourceImpl&>(*data->source).SetConnected(connected);
 }
 
 void SetSourceDescription(CS_Source source, const wpi::Twine& description,
                           CS_Status* status) {
   auto data = Instance::GetInstance().GetSource(source);
-  if (!data || (data->kind & SourceMask) == 0) {
+  if (!data || (data->kind & CS_SOURCE_IMAGE) == 0) {
     *status = CS_INVALID_HANDLE;
     return;
   }
-  static_cast<CvSourceImpl&>(*data->source).SetDescription(description);
+  static_cast<ImageSourceImpl&>(*data->source).SetDescription(description);
 }
 
 CS_Property CreateSourceProperty(CS_Source source, const wpi::Twine& name,
@@ -116,11 +225,11 @@ CS_Property CreateSourceProperty(CS_Source source, const wpi::Twine& name,
                                  int step, int defaultValue, int value,
                                  CS_Status* status) {
   auto data = Instance::GetInstance().GetSource(source);
-  if (!data || (data->kind & SourceMask) == 0) {
+  if (!data || (data->kind & CS_SOURCE_IMAGE) == 0) {
     *status = CS_INVALID_HANDLE;
     return -1;
   }
-  int property = static_cast<CvSourceImpl&>(*data->source)
+  int property = static_cast<ImageSourceImpl&>(*data->source)
                      .CreateProperty(name, kind, minimum, maximum, step,
                                      defaultValue, value);
   return Handle{source, property, Handle::kProperty};
@@ -130,7 +239,7 @@ void SetSourceEnumPropertyChoices(CS_Source source, CS_Property property,
                                   wpi::ArrayRef<std::string> choices,
                                   CS_Status* status) {
   auto data = Instance::GetInstance().GetSource(source);
-  if (!data || (data->kind & SourceMask) == 0) {
+  if (!data || (data->kind & CS_SOURCE_IMAGE) == 0) {
     *status = CS_INVALID_HANDLE;
     return;
   }
@@ -148,7 +257,7 @@ void SetSourceEnumPropertyChoices(CS_Source source, CS_Property property,
     return;
   }
   int propertyIndex = handle.GetIndex();
-  static_cast<CvSourceImpl&>(*data->source)
+  static_cast<ImageSourceImpl&>(*data->source)
       .SetEnumPropertyChoices(propertyIndex, choices, status);
 }
 
@@ -156,10 +265,10 @@ void SetSourceEnumPropertyChoices(CS_Source source, CS_Property property,
 
 extern "C" {
 
-CS_Source CS_CreateCvSource(const char* name, const CS_VideoMode* mode,
-                            CS_Status* status) {
-  return cs::CreateCvSource(name, static_cast<const cs::VideoMode&>(*mode),
-                            status);
+CS_Source CS_CreateImageSource(const char* name, const CS_VideoMode* mode,
+                               CS_Status* status) {
+  return cs::CreateImageSource(name, static_cast<const cs::VideoMode&>(*mode),
+                               status);
 }
 
 #if CV_VERSION_MAJOR < 4
@@ -171,6 +280,11 @@ void CS_PutSourceFrame(CS_Source source, struct CvMat* image,
 #endif  // CV_VERSION_MAJOR < 4
 
 void CS_PutSourceFrameCpp(CS_Source source, cv::Mat* image, CS_Status* status) {
+  return cs::PutSourceFrame(source, *image, status);
+}
+
+void CS_PutRawSourceFrame(CS_Source source, const struct CS_RawFrame* image,
+                          CS_Status* status) {
   return cs::PutSourceFrame(source, *image, status);
 }
 

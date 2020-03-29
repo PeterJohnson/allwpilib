@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------------*/
-/* Copyright (c) 2016-2019 FIRST. All Rights Reserved.                        */
+/* Copyright (c) 2016-2020 FIRST. All Rights Reserved.                        */
 /* Open Source Software - may be modified and shared by FRC teams. The code   */
 /* must be accompanied by the FIRST BSD license file in the root directory of */
 /* the project.                                                               */
@@ -23,7 +23,7 @@ public class CvSource extends ImageSource {
    * @param mode Video mode being generated
    */
   public CvSource(String name, VideoMode mode) {
-    super(CameraServerCvJNI.createCvSource(name,
+    super(CameraServerJNI.createImageSource(name,
         mode.pixelFormat.getValue(),
         mode.width,
         mode.height,
@@ -40,7 +40,7 @@ public class CvSource extends ImageSource {
    * @param fps fps
    */
   public CvSource(String name, VideoMode.PixelFormat pixelFormat, int width, int height, int fps) {
-    super(CameraServerCvJNI.createCvSource(name, pixelFormat.getValue(), width, height, fps));
+    super(CameraServerJNI.createImageSource(name, pixelFormat.getValue(), width, height, fps));
   }
 
   /**

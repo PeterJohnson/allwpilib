@@ -126,8 +126,7 @@ enum CS_SourceKind {
   CS_SOURCE_UNKNOWN = 0,
   CS_SOURCE_USB = 1,
   CS_SOURCE_HTTP = 2,
-  CS_SOURCE_CV = 4,
-  CS_SOURCE_RAW = 8,
+  CS_SOURCE_IMAGE = 4
 };
 
 /**
@@ -146,8 +145,7 @@ enum CS_HttpCameraKind {
 enum CS_SinkKind {
   CS_SINK_UNKNOWN = 0,
   CS_SINK_MJPEG = 2,
-  CS_SINK_CV = 4,
-  CS_SINK_RAW = 8
+  CS_SINK_IMAGE = 4
 };
 
 /**
@@ -272,8 +270,8 @@ CS_Source CS_CreateHttpCamera(const char* name, const char* url,
 CS_Source CS_CreateHttpCameraMulti(const char* name, const char** urls,
                                    int count, enum CS_HttpCameraKind kind,
                                    CS_Status* status);
-CS_Source CS_CreateCvSource(const char* name, const CS_VideoMode* mode,
-                            CS_Status* status);
+CS_Source CS_CreateImageSource(const char* name, const CS_VideoMode* mode,
+                               CS_Status* status);
 /** @} */
 
 /**
@@ -354,7 +352,7 @@ char** CS_GetHttpCameraUrls(CS_Source source, int* count, CS_Status* status);
 /** @} */
 
 /**
- * @defgroup cscore_opencv_source_cfunc OpenCV Source Functions
+ * @defgroup cscore_image_source_cfunc Image Source Functions
  * @{
  */
 void CS_NotifySourceError(CS_Source source, const char* msg, CS_Status* status);
@@ -377,7 +375,7 @@ void CS_SetSourceEnumPropertyChoices(CS_Source source, CS_Property property,
  */
 CS_Sink CS_CreateMjpegServer(const char* name, const char* listenAddress,
                              int port, CS_Status* status);
-CS_Sink CS_CreateCvSink(const char* name, CS_Status* status);
+CS_Sink CS_CreateImageSink(const char* name, CS_Status* status);
 /** @} */
 
 /**
@@ -411,7 +409,7 @@ int CS_GetMjpegServerPort(CS_Sink sink, CS_Status* status);
 /** @} */
 
 /**
- * @defgroup cscore_opencv_sink_cfunc OpenCV Sink Functions
+ * @defgroup cscore_image_sink_cfunc Image Sink Functions
  * @{
  */
 void CS_SetSinkDescription(CS_Sink sink, const char* description,
