@@ -73,6 +73,17 @@ public class CameraServerJNI {
   public static native String[] getEnumPropertyChoices(int property);
 
   //
+  // Source/Sink Common Node Functions
+  //
+  public static native int getNodeProperty(int node, String name);
+  public static native int[] enumerateNodeProperties(int node);
+  public static native boolean setNodeConfigJson(int node, String config);
+  public static native String getNodeConfigJson(int node);
+  public static native int copyNode(int node);
+  public static native void releaseNode(int node);
+  public static native boolean isNodeEnabled(int node);
+
+  //
   // Source Creation Functions
   //
   public static native int createUsbCameraDev(String name, int dev);
@@ -90,20 +101,13 @@ public class CameraServerJNI {
   public static native long getSourceLastFrameTime(int source);
   public static native void setSourceConnectionStrategy(int source, int strategy);
   public static native boolean isSourceConnected(int source);
-  public static native boolean isSourceEnabled(int source);
-  public static native int getSourceProperty(int source, String name);
-  public static native int[] enumerateSourceProperties(int source);
   public static native VideoMode getSourceVideoMode(int source);
   public static native boolean setSourceVideoMode(int source, int pixelFormat, int width, int height, int fps);
   public static native boolean setSourcePixelFormat(int source, int pixelFormat);
   public static native boolean setSourceResolution(int source, int width, int height);
   public static native boolean setSourceFPS(int source, int fps);
-  public static native boolean setSourceConfigJson(int source, String config);
-  public static native String getSourceConfigJson(int source);
   public static native VideoMode[] enumerateSourceVideoModes(int source);
   public static native int[] enumerateSourceSinks(int source);
-  public static native int copySource(int source);
-  public static native void releaseSource(int source);
 
   //
   // Camera Source Common Property Fuctions
@@ -157,15 +161,9 @@ public class CameraServerJNI {
   public static native int getSinkKind(int sink);
   public static native String getSinkName(int sink);
   public static native String getSinkDescription(int sink);
-  public static native int getSinkProperty(int sink, String name);
-  public static native int[] enumerateSinkProperties(int sink);
-  public static native boolean setSinkConfigJson(int sink, String config);
-  public static native String getSinkConfigJson(int sink);
   public static native void setSinkSource(int sink, int source);
   public static native int getSinkSourceProperty(int sink, String name);
   public static native int getSinkSource(int sink);
-  public static native int copySink(int sink);
-  public static native void releaseSink(int sink);
 
   //
   // MjpegServer Sink Functions

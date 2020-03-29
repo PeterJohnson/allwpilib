@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------------*/
-/* Copyright (c) 2016-2019 FIRST. All Rights Reserved.                        */
+/* Copyright (c) 2016-2020 FIRST. All Rights Reserved.                        */
 /* Open Source Software - may be modified and shared by FRC teams. The code   */
 /* must be accompanied by the FIRST BSD license file in the root directory of */
 /* the project.                                                               */
@@ -61,8 +61,8 @@ public class MjpegServer extends VideoSink {
    * @param height height, 0 for unspecified
    */
   public void setResolution(int width, int height) {
-    CameraServerJNI.setProperty(CameraServerJNI.getSinkProperty(m_handle, "width"), width);
-    CameraServerJNI.setProperty(CameraServerJNI.getSinkProperty(m_handle, "height"), height);
+    CameraServerJNI.setProperty(CameraServerJNI.getNodeProperty(m_handle, "width"), width);
+    CameraServerJNI.setProperty(CameraServerJNI.getNodeProperty(m_handle, "height"), height);
   }
 
   /**
@@ -73,7 +73,7 @@ public class MjpegServer extends VideoSink {
    * @param fps FPS, 0 for unspecified
    */
   public void setFPS(int fps) {
-    CameraServerJNI.setProperty(CameraServerJNI.getSinkProperty(m_handle, "fps"), fps);
+    CameraServerJNI.setProperty(CameraServerJNI.getNodeProperty(m_handle, "fps"), fps);
   }
 
   /**
@@ -86,7 +86,7 @@ public class MjpegServer extends VideoSink {
    * @param quality JPEG compression quality (0-100), -1 for unspecified
    */
   public void setCompression(int quality) {
-    CameraServerJNI.setProperty(CameraServerJNI.getSinkProperty(m_handle, "compression"),
+    CameraServerJNI.setProperty(CameraServerJNI.getNodeProperty(m_handle, "compression"),
                                 quality);
   }
 
@@ -98,7 +98,7 @@ public class MjpegServer extends VideoSink {
    * @param quality JPEG compression quality (0-100)
    */
   public void setDefaultCompression(int quality) {
-    CameraServerJNI.setProperty(CameraServerJNI.getSinkProperty(m_handle, "default_compression"),
+    CameraServerJNI.setProperty(CameraServerJNI.getNodeProperty(m_handle, "default_compression"),
                                 quality);
   }
 }

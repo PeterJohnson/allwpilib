@@ -151,8 +151,8 @@ struct RawEvent {
   Kind kind;
 
   // Valid for kSource* and kSink* respectively
-  CS_Source sourceHandle = CS_INVALID_HANDLE;
-  CS_Sink sinkHandle = CS_INVALID_HANDLE;
+  CS_Source sourceHandle = 0;
+  CS_Sink sinkHandle = 0;
 
   // Source/sink/property name
   std::string name;
@@ -193,6 +193,25 @@ std::vector<std::string> GetEnumPropertyChoices(CS_Property property,
 /** @} */
 
 /**
+ * @defgroup cscore_node_func Source/Sink Common Node Functions
+ * @{
+ */
+CS_Property GetNodeProperty(CS_Handle node, const wpi::Twine& name,
+                            CS_Status* status);
+wpi::ArrayRef<CS_Property> EnumerateNodeProperties(
+    CS_Handle node, wpi::SmallVectorImpl<CS_Property>& vec, CS_Status* status);
+bool SetNodeConfigJson(CS_Handle node, wpi::StringRef config,
+                       CS_Status* status);
+bool SetNodeConfigJson(CS_Handle node, const wpi::json& config,
+                       CS_Status* status);
+std::string GetNodeConfigJson(CS_Handle node, CS_Status* status);
+wpi::json GetNodeConfigJsonObject(CS_Handle node, CS_Status* status);
+CS_Handle CopyNode(CS_Handle node, CS_Status* status);
+void ReleaseNode(CS_Handle node, CS_Status* status);
+bool IsNodeEnabled(CS_Handle node, CS_Status* status);
+/** @} */
+
+/**
  * @defgroup cscore_source_create_func Source Creation Functions
  * @{
  */
@@ -226,12 +245,6 @@ void SetSourceConnectionStrategy(CS_Source source,
                                  CS_ConnectionStrategy strategy,
                                  CS_Status* status);
 bool IsSourceConnected(CS_Source source, CS_Status* status);
-bool IsSourceEnabled(CS_Source source, CS_Status* status);
-CS_Property GetSourceProperty(CS_Source source, const wpi::Twine& name,
-                              CS_Status* status);
-wpi::ArrayRef<CS_Property> EnumerateSourceProperties(
-    CS_Source source, wpi::SmallVectorImpl<CS_Property>& vec,
-    CS_Status* status);
 VideoMode GetSourceVideoMode(CS_Source source, CS_Status* status);
 bool SetSourceVideoMode(CS_Source source, const VideoMode& mode,
                         CS_Status* status);
@@ -240,19 +253,11 @@ bool SetSourcePixelFormat(CS_Source source, VideoMode::PixelFormat pixelFormat,
 bool SetSourceResolution(CS_Source source, int width, int height,
                          CS_Status* status);
 bool SetSourceFPS(CS_Source source, int fps, CS_Status* status);
-bool SetSourceConfigJson(CS_Source source, wpi::StringRef config,
-                         CS_Status* status);
-bool SetSourceConfigJson(CS_Source source, const wpi::json& config,
-                         CS_Status* status);
-std::string GetSourceConfigJson(CS_Source source, CS_Status* status);
-wpi::json GetSourceConfigJsonObject(CS_Source source, CS_Status* status);
 std::vector<VideoMode> EnumerateSourceVideoModes(CS_Source source,
                                                  CS_Status* status);
 wpi::ArrayRef<CS_Sink> EnumerateSourceSinks(CS_Source source,
                                             wpi::SmallVectorImpl<CS_Sink>& vec,
                                             CS_Status* status);
-CS_Source CopySource(CS_Source source, CS_Status* status);
-void ReleaseSource(CS_Source source, CS_Status* status);
 /** @} */
 
 /**
@@ -321,27 +326,27 @@ CS_Sink CreateImageSink(const wpi::Twine& name, CS_Status* status);
  * @{
  */
 CS_SinkKind GetSinkKind(CS_Sink sink, CS_Status* status);
+
 std::string GetSinkName(CS_Sink sink, CS_Status* status);
 wpi::StringRef GetSinkName(CS_Sink sink, wpi::SmallVectorImpl<char>& buf,
                            CS_Status* status);
+
+void SetSinkDescription(CS_Sink sink, const wpi::Twine& description,
+                        CS_Status* status);
 std::string GetSinkDescription(CS_Sink sink, CS_Status* status);
 wpi::StringRef GetSinkDescription(CS_Sink sink, wpi::SmallVectorImpl<char>& buf,
                                   CS_Status* status);
-CS_Property GetSinkProperty(CS_Sink sink, const wpi::Twine& name,
-                            CS_Status* status);
-wpi::ArrayRef<CS_Property> EnumerateSinkProperties(
-    CS_Sink sink, wpi::SmallVectorImpl<CS_Property>& vec, CS_Status* status);
-void SetSinkSource(CS_Sink sink, CS_Source source, CS_Status* status);
+
 CS_Property GetSinkSourceProperty(CS_Sink sink, const wpi::Twine& name,
                                   CS_Status* status);
-bool SetSinkConfigJson(CS_Sink sink, wpi::StringRef config, CS_Status* status);
-bool SetSinkConfigJson(CS_Sink sink, const wpi::json& config,
-                       CS_Status* status);
-std::string GetSinkConfigJson(CS_Sink sink, CS_Status* status);
-wpi::json GetSinkConfigJsonObject(CS_Sink sink, CS_Status* status);
+
+void SetSinkSource(CS_Sink sink, CS_Source source, CS_Status* status);
 CS_Source GetSinkSource(CS_Sink sink, CS_Status* status);
-CS_Sink CopySink(CS_Sink sink, CS_Status* status);
-void ReleaseSink(CS_Sink sink, CS_Status* status);
+
+std::string GetSinkError(CS_Sink sink, CS_Status* status);
+wpi::StringRef GetSinkError(CS_Sink sink, wpi::SmallVectorImpl<char>& buf,
+                            CS_Status* status);
+void SetSinkEnabled(CS_Sink sink, bool enabled, CS_Status* status);
 /** @} */
 
 /**
@@ -350,18 +355,6 @@ void ReleaseSink(CS_Sink sink, CS_Status* status);
  */
 std::string GetMjpegServerListenAddress(CS_Sink sink, CS_Status* status);
 int GetMjpegServerPort(CS_Sink sink, CS_Status* status);
-/** @} */
-
-/**
- * @defgroup cscore_image_sink_func Image Sink Functions
- * @{
- */
-void SetSinkDescription(CS_Sink sink, const wpi::Twine& description,
-                        CS_Status* status);
-std::string GetSinkError(CS_Sink sink, CS_Status* status);
-wpi::StringRef GetSinkError(CS_Sink sink, wpi::SmallVectorImpl<char>& buf,
-                            CS_Status* status);
-void SetSinkEnabled(CS_Sink sink, bool enabled, CS_Status* status);
 /** @} */
 
 /**

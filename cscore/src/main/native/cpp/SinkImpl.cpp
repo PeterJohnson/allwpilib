@@ -113,22 +113,14 @@ bool SinkImpl::SetConfigJson(wpi::StringRef config, CS_Status* status) {
     *status = CS_PROPERTY_WRITE_FAILED;
     return false;
   }
-  return SetConfigJson(j, status);
+  return SetConfigJsonObject(j, status);
 }
 
-bool SinkImpl::SetConfigJson(const wpi::json& config, CS_Status* status) {
+bool SinkImpl::SetConfigJsonObject(const wpi::json& config, CS_Status* status) {
   if (config.count("properties") != 0)
     SetPropertiesJson(config.at("properties"), m_logger, GetName(), status);
 
   return true;
-}
-
-std::string SinkImpl::GetConfigJson(CS_Status* status) {
-  std::string rv;
-  wpi::raw_string_ostream os(rv);
-  GetConfigJsonObject(status).dump(os, 4);
-  os.flush();
-  return rv;
 }
 
 wpi::json SinkImpl::GetConfigJsonObject(CS_Status* status) {

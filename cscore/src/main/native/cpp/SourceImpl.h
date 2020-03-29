@@ -117,10 +117,9 @@ class SourceImpl : public PropertyContainer {
   virtual bool SetResolution(int width, int height, CS_Status* status);
   virtual bool SetFPS(int fps, CS_Status* status);
 
-  bool SetConfigJson(wpi::StringRef config, CS_Status* status);
-  virtual bool SetConfigJson(const wpi::json& config, CS_Status* status);
-  std::string GetConfigJson(CS_Status* status);
-  virtual wpi::json GetConfigJsonObject(CS_Status* status);
+  bool SetConfigJson(wpi::StringRef config, CS_Status* status) override;
+  bool SetConfigJsonObject(const wpi::json& config, CS_Status* status) override;
+  wpi::json GetConfigJsonObject(CS_Status* status) override;
 
   std::vector<VideoMode> EnumerateVideoModes(CS_Status* status) const;
 

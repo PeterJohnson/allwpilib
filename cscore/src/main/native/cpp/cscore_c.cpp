@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------------*/
-/* Copyright (c) 2016-2019 FIRST. All Rights Reserved.                        */
+/* Copyright (c) 2016-2020 FIRST. All Rights Reserved.                        */
 /* Open Source Software - may be modified and shared by FRC teams. The code   */
 /* must be accompanied by the FIRST BSD license file in the root directory of */
 /* the project.                                                               */
@@ -78,6 +78,43 @@ char** CS_GetEnumPropertyChoices(CS_Property property, int* count,
   return out;
 }
 
+CS_Property CS_GetNodeProperty(CS_Handle node, const char* name,
+                               CS_Status* status) {
+  return cs::GetNodeProperty(node, name, status);
+}
+
+CS_Property* CS_EnumerateNodeProperties(CS_Handle node, int* count,
+                                        CS_Status* status) {
+  wpi::SmallVector<CS_Property, 32> buf;
+  auto vec = cs::EnumerateNodeProperties(node, buf, status);
+  CS_Property* out = static_cast<CS_Property*>(
+      wpi::safe_malloc(vec.size() * sizeof(CS_Property)));
+  *count = vec.size();
+  std::copy(vec.begin(), vec.end(), out);
+  return out;
+}
+
+CS_Bool CS_SetNodeConfigJson(CS_Handle node, const char* config,
+                             CS_Status* status) {
+  return cs::SetNodeConfigJson(node, config, status);
+}
+
+char* CS_GetNodeConfigJson(CS_Handle node, CS_Status* status) {
+  return cs::ConvertToC(cs::GetNodeConfigJson(node, status));
+}
+
+CS_Handle CS_CopyNode(CS_Handle node, CS_Status* status) {
+  return cs::CopyNode(node, status);
+}
+
+void CS_ReleaseNode(CS_Handle node, CS_Status* status) {
+  return cs::ReleaseNode(node, status);
+}
+
+CS_Bool CS_IsNodeEnabled(CS_Handle node, CS_Status* status) {
+  return cs::IsNodeEnabled(node, status);
+}
+
 CS_SourceKind CS_GetSourceKind(CS_Source source, CS_Status* status) {
   return cs::GetSourceKind(source, status);
 }
@@ -108,26 +145,6 @@ void CS_SetSourceConnectionStrategy(CS_Source source,
 
 CS_Bool CS_IsSourceConnected(CS_Source source, CS_Status* status) {
   return cs::IsSourceConnected(source, status);
-}
-
-CS_Bool CS_IsSourceEnabled(CS_Source source, CS_Status* status) {
-  return cs::IsSourceEnabled(source, status);
-}
-
-CS_Property CS_GetSourceProperty(CS_Source source, const char* name,
-                                 CS_Status* status) {
-  return cs::GetSourceProperty(source, name, status);
-}
-
-CS_Property* CS_EnumerateSourceProperties(CS_Source source, int* count,
-                                          CS_Status* status) {
-  wpi::SmallVector<CS_Property, 32> buf;
-  auto vec = cs::EnumerateSourceProperties(source, buf, status);
-  CS_Property* out = static_cast<CS_Property*>(
-      wpi::safe_malloc(vec.size() * sizeof(CS_Property)));
-  *count = vec.size();
-  std::copy(vec.begin(), vec.end(), out);
-  return out;
 }
 
 void CS_GetSourceVideoMode(CS_Source source, CS_VideoMode* mode,
@@ -171,15 +188,6 @@ CS_Bool CS_SetSourceFPS(CS_Source source, int fps, CS_Status* status) {
   return cs::SetSourceFPS(source, fps, status);
 }
 
-CS_Bool CS_SetSourceConfigJson(CS_Source source, const char* config,
-                               CS_Status* status) {
-  return cs::SetSourceConfigJson(source, config, status);
-}
-
-char* CS_GetSourceConfigJson(CS_Source source, CS_Status* status) {
-  return cs::ConvertToC(cs::GetSourceConfigJson(source, status));
-}
-
 CS_VideoMode* CS_EnumerateSourceVideoModes(CS_Source source, int* count,
                                            CS_Status* status) {
   auto vec = cs::EnumerateSourceVideoModes(source, status);
@@ -199,14 +207,6 @@ CS_Sink* CS_EnumerateSourceSinks(CS_Source source, int* count,
   *count = handles.size();
   std::copy(handles.begin(), handles.end(), sinks);
   return sinks;
-}
-
-CS_Source CS_CopySource(CS_Source source, CS_Status* status) {
-  return cs::CopySource(source, status);
-}
-
-void CS_ReleaseSource(CS_Source source, CS_Status* status) {
-  return cs::ReleaseSource(source, status);
 }
 
 void CS_SetCameraBrightness(CS_Source source, int brightness,
@@ -262,31 +262,6 @@ char* CS_GetSinkDescription(CS_Sink sink, CS_Status* status) {
   return cs::ConvertToC(str);
 }
 
-CS_Property CS_GetSinkProperty(CS_Sink sink, const char* name,
-                               CS_Status* status) {
-  return cs::GetSinkProperty(sink, name, status);
-}
-
-CS_Property* CS_EnumerateSinkProperties(CS_Sink sink, int* count,
-                                        CS_Status* status) {
-  wpi::SmallVector<CS_Property, 32> buf;
-  auto vec = cs::EnumerateSinkProperties(sink, buf, status);
-  CS_Property* out = static_cast<CS_Property*>(
-      wpi::safe_malloc(vec.size() * sizeof(CS_Property)));
-  *count = vec.size();
-  std::copy(vec.begin(), vec.end(), out);
-  return out;
-}
-
-CS_Bool CS_SetSinkConfigJson(CS_Sink sink, const char* config,
-                             CS_Status* status) {
-  return cs::SetSinkConfigJson(sink, config, status);
-}
-
-char* CS_GetSinkConfigJson(CS_Sink sink, CS_Status* status) {
-  return cs::ConvertToC(cs::GetSinkConfigJson(sink, status));
-}
-
 void CS_SetSinkSource(CS_Sink sink, CS_Source source, CS_Status* status) {
   return cs::SetSinkSource(sink, source, status);
 }
@@ -298,14 +273,6 @@ CS_Source CS_GetSinkSource(CS_Sink sink, CS_Status* status) {
 CS_Property CS_GetSinkSourceProperty(CS_Sink sink, const char* name,
                                      CS_Status* status) {
   return cs::GetSinkSourceProperty(sink, name, status);
-}
-
-CS_Sink CS_CopySink(CS_Sink sink, CS_Status* status) {
-  return cs::CopySink(sink, status);
-}
-
-void CS_ReleaseSink(CS_Sink sink, CS_Status* status) {
-  return cs::ReleaseSink(sink, status);
 }
 
 void CS_SetListenerOnStart(void (*onStart)(void* data), void* data) {
@@ -383,7 +350,7 @@ void CS_ReleaseEnumeratedSources(CS_Source* sources, int count) {
   if (!sources) return;
   for (int i = 0; i < count; ++i) {
     CS_Status status = 0;
-    if (sources[i] != 0) cs::ReleaseSource(sources[i], &status);
+    if (sources[i] != 0) cs::ReleaseNode(sources[i], &status);
   }
   std::free(sources);
 }
@@ -402,7 +369,7 @@ void CS_ReleaseEnumeratedSinks(CS_Sink* sinks, int count) {
   if (!sinks) return;
   for (int i = 0; i < count; ++i) {
     CS_Status status = 0;
-    if (sinks[i] != 0) cs::ReleaseSink(sinks[i], &status);
+    if (sinks[i] != 0) cs::ReleaseNode(sinks[i], &status);
   }
   std::free(sinks);
 }

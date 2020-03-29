@@ -24,31 +24,42 @@
 using namespace cs;
 
 static std::shared_ptr<PropertyContainer> GetPropertyContainer(
+    CS_Handle handle, Handle::Type* propertyType, CS_Status* status) {
+  Handle h{handle};
+  if (h.IsType(Handle::kSource)) {
+    if (auto data = Instance::GetInstance().GetSource(handle)) {
+      if (propertyType) *propertyType = Handle::kProperty;
+      return data->source;
+    }
+  } else if (h.IsType(Handle::kSink)) {
+    if (auto data = Instance::GetInstance().GetSink(handle)) {
+      if (propertyType) *propertyType = Handle::kSinkProperty;
+      return data->sink;
+    }
+  }
+  *status = CS_INVALID_HANDLE;
+  return nullptr;
+}
+
+static std::shared_ptr<PropertyContainer> GetProperty(
     CS_Property propertyHandle, int* propertyIndex, CS_Status* status) {
-  std::shared_ptr<PropertyContainer> container;
   Handle handle{propertyHandle};
   if (handle.IsType(Handle::kProperty)) {
     int i = handle.GetParentIndex();
-    auto data = Instance::GetInstance().GetSource(Handle{i, Handle::kSource});
-    if (!data) {
-      *status = CS_INVALID_HANDLE;
-      return nullptr;
+    if (auto data =
+            Instance::GetInstance().GetSource(Handle{i, Handle::kSource})) {
+      *propertyIndex = handle.GetIndex();
+      return data->source;
     }
-    container = data->source;
   } else if (handle.IsType(Handle::kSinkProperty)) {
     int i = handle.GetParentIndex();
-    auto data = Instance::GetInstance().GetSink(Handle{i, Handle::kSink});
-    if (!data) {
-      *status = CS_INVALID_HANDLE;
-      return nullptr;
+    if (auto data = Instance::GetInstance().GetSink(Handle{i, Handle::kSink})) {
+      *propertyIndex = handle.GetIndex();
+      return data->sink;
     }
-    container = data->sink;
-  } else {
-    *status = CS_INVALID_HANDLE;
-    return nullptr;
   }
-  *propertyIndex = handle.GetIndex();
-  return container;
+  *status = CS_INVALID_HANDLE;
+  return nullptr;
 }
 
 namespace cs {
@@ -59,7 +70,7 @@ namespace cs {
 
 CS_PropertyKind GetPropertyKind(CS_Property property, CS_Status* status) {
   int propertyIndex;
-  auto container = GetPropertyContainer(property, &propertyIndex, status);
+  auto container = ::GetProperty(property, &propertyIndex, status);
   if (!container) return CS_PROP_NONE;
   return container->GetPropertyKind(propertyIndex);
 }
@@ -67,7 +78,7 @@ CS_PropertyKind GetPropertyKind(CS_Property property, CS_Status* status) {
 std::string GetPropertyName(CS_Property property, CS_Status* status) {
   wpi::SmallString<128> buf;
   int propertyIndex;
-  auto container = GetPropertyContainer(property, &propertyIndex, status);
+  auto container = ::GetProperty(property, &propertyIndex, status);
   if (!container) return std::string{};
   return container->GetPropertyName(propertyIndex, buf, status);
 }
@@ -76,49 +87,49 @@ wpi::StringRef GetPropertyName(CS_Property property,
                                wpi::SmallVectorImpl<char>& buf,
                                CS_Status* status) {
   int propertyIndex;
-  auto container = GetPropertyContainer(property, &propertyIndex, status);
+  auto container = ::GetProperty(property, &propertyIndex, status);
   if (!container) return wpi::StringRef{};
   return container->GetPropertyName(propertyIndex, buf, status);
 }
 
 int GetProperty(CS_Property property, CS_Status* status) {
   int propertyIndex;
-  auto container = GetPropertyContainer(property, &propertyIndex, status);
+  auto container = ::GetProperty(property, &propertyIndex, status);
   if (!container) return false;
   return container->GetProperty(propertyIndex, status);
 }
 
 void SetProperty(CS_Property property, int value, CS_Status* status) {
   int propertyIndex;
-  auto container = GetPropertyContainer(property, &propertyIndex, status);
+  auto container = ::GetProperty(property, &propertyIndex, status);
   if (!container) return;
   container->SetProperty(propertyIndex, value, status);
 }
 
 int GetPropertyMin(CS_Property property, CS_Status* status) {
   int propertyIndex;
-  auto container = GetPropertyContainer(property, &propertyIndex, status);
+  auto container = ::GetProperty(property, &propertyIndex, status);
   if (!container) return 0.0;
   return container->GetPropertyMin(propertyIndex, status);
 }
 
 int GetPropertyMax(CS_Property property, CS_Status* status) {
   int propertyIndex;
-  auto container = GetPropertyContainer(property, &propertyIndex, status);
+  auto container = ::GetProperty(property, &propertyIndex, status);
   if (!container) return 0.0;
   return container->GetPropertyMax(propertyIndex, status);
 }
 
 int GetPropertyStep(CS_Property property, CS_Status* status) {
   int propertyIndex;
-  auto container = GetPropertyContainer(property, &propertyIndex, status);
+  auto container = ::GetProperty(property, &propertyIndex, status);
   if (!container) return 0.0;
   return container->GetPropertyStep(propertyIndex, status);
 }
 
 int GetPropertyDefault(CS_Property property, CS_Status* status) {
   int propertyIndex;
-  auto container = GetPropertyContainer(property, &propertyIndex, status);
+  auto container = ::GetProperty(property, &propertyIndex, status);
   if (!container) return 0.0;
   return container->GetPropertyDefault(propertyIndex, status);
 }
@@ -126,7 +137,7 @@ int GetPropertyDefault(CS_Property property, CS_Status* status) {
 std::string GetStringProperty(CS_Property property, CS_Status* status) {
   wpi::SmallString<128> buf;
   int propertyIndex;
-  auto container = GetPropertyContainer(property, &propertyIndex, status);
+  auto container = ::GetProperty(property, &propertyIndex, status);
   if (!container) return std::string{};
   return container->GetStringProperty(propertyIndex, buf, status);
 }
@@ -135,7 +146,7 @@ wpi::StringRef GetStringProperty(CS_Property property,
                                  wpi::SmallVectorImpl<char>& buf,
                                  CS_Status* status) {
   int propertyIndex;
-  auto container = GetPropertyContainer(property, &propertyIndex, status);
+  auto container = ::GetProperty(property, &propertyIndex, status);
   if (!container) return wpi::StringRef{};
   return container->GetStringProperty(propertyIndex, buf, status);
 }
@@ -143,7 +154,7 @@ wpi::StringRef GetStringProperty(CS_Property property,
 void SetStringProperty(CS_Property property, const wpi::Twine& value,
                        CS_Status* status) {
   int propertyIndex;
-  auto container = GetPropertyContainer(property, &propertyIndex, status);
+  auto container = ::GetProperty(property, &propertyIndex, status);
   if (!container) return;
   container->SetStringProperty(propertyIndex, value, status);
 }
@@ -151,9 +162,112 @@ void SetStringProperty(CS_Property property, const wpi::Twine& value,
 std::vector<std::string> GetEnumPropertyChoices(CS_Property property,
                                                 CS_Status* status) {
   int propertyIndex;
-  auto container = GetPropertyContainer(property, &propertyIndex, status);
+  auto container = ::GetProperty(property, &propertyIndex, status);
   if (!container) return std::vector<std::string>{};
   return container->GetEnumPropertyChoices(propertyIndex, status);
+}
+
+//
+// Source/Sink/Server Configuration Functions
+//
+
+CS_Property GetNodeProperty(CS_Handle node, const wpi::Twine& name,
+                            CS_Status* status) {
+  Handle::Type propertyType;
+  auto container = ::GetPropertyContainer(node, &propertyType, status);
+  if (!container) return 0;
+  int property = container->GetPropertyIndex(name);
+  if (property < 0) {
+    *status = CS_INVALID_HANDLE;
+    return 0;
+  }
+  return Handle{node, property, propertyType};
+}
+
+wpi::ArrayRef<CS_Property> EnumerateNodeProperties(
+    CS_Handle node, wpi::SmallVectorImpl<CS_Property>& vec, CS_Status* status) {
+  Handle::Type propertyType;
+  auto container = ::GetPropertyContainer(node, &propertyType, status);
+  if (!container) return 0;
+  wpi::SmallVector<int, 32> properties_buf;
+  for (auto property : container->EnumerateProperties(properties_buf, status))
+    vec.push_back(Handle{node, property, propertyType});
+  return vec;
+}
+
+bool SetNodeConfigJson(CS_Handle node, wpi::StringRef config,
+                       CS_Status* status) {
+  if (auto container = ::GetPropertyContainer(node, nullptr, status))
+    return container->SetConfigJson(config, status);
+  return false;
+}
+
+bool SetNodeConfigJson(CS_Handle node, const wpi::json& config,
+                       CS_Status* status) {
+  if (auto container = ::GetPropertyContainer(node, nullptr, status))
+    return container->SetConfigJsonObject(config, status);
+  return false;
+}
+
+std::string GetNodeConfigJson(CS_Handle node, CS_Status* status) {
+  if (auto container = ::GetPropertyContainer(node, nullptr, status))
+    return container->GetConfigJson(status);
+  return std::string{};
+}
+
+wpi::json GetNodeConfigJsonObject(CS_Handle node, CS_Status* status) {
+  if (auto container = ::GetPropertyContainer(node, nullptr, status))
+    return container->GetConfigJsonObject(status);
+  return wpi::json{};
+}
+
+CS_Handle CopyNode(CS_Handle node, CS_Status* status) {
+  if (node == 0) return 0;
+  auto& inst = Instance::GetInstance();
+  Handle handle{node};
+  if (handle.IsType(Handle::kSource)) {
+    if (auto data = inst.GetSource(node)) {
+      data->refCount++;
+      return node;
+    }
+  } else if (handle.IsType(Handle::kSink)) {
+    if (auto data = inst.GetSink(node)) {
+      data->refCount++;
+      return node;
+    }
+  }
+  *status = CS_INVALID_HANDLE;
+  return 0;
+}
+
+void ReleaseNode(CS_Handle node, CS_Status* status) {
+  if (node == 0) return;
+  auto& inst = Instance::GetInstance();
+  Handle handle{node};
+  if (handle.IsType(Handle::kSource)) {
+    if (auto data = inst.GetSource(node)) {
+      if (data->refCount-- == 0) inst.DestroySource(node);
+      return;
+    }
+  } else if (handle.IsType(Handle::kSink)) {
+    if (auto data = inst.GetSink(node)) {
+      if (data->refCount-- == 0) inst.DestroySink(node);
+      return;
+    }
+  }
+  *status = CS_INVALID_HANDLE;
+}
+
+bool IsNodeEnabled(CS_Handle node, CS_Status* status) {
+  auto& inst = Instance::GetInstance();
+  Handle handle{node};
+  if (handle.IsType(Handle::kSource)) {
+    if (auto data = inst.GetSource(node)) return data->source->IsEnabled();
+  } else if (handle.IsType(Handle::kSink)) {
+    if (auto data = inst.GetSink(node)) return data->sink->IsEnabled();
+  }
+  *status = CS_INVALID_HANDLE;
+  return false;
 }
 
 //
@@ -238,45 +352,6 @@ bool IsSourceConnected(CS_Source source, CS_Status* status) {
   return data->source->IsConnected();
 }
 
-bool IsSourceEnabled(CS_Source source, CS_Status* status) {
-  auto data = Instance::GetInstance().GetSource(source);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return false;
-  }
-  return data->source->IsEnabled();
-}
-
-CS_Property GetSourceProperty(CS_Source source, const wpi::Twine& name,
-                              CS_Status* status) {
-  auto data = Instance::GetInstance().GetSource(source);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return 0;
-  }
-  int property = data->source->GetPropertyIndex(name);
-  if (property < 0) {
-    *status = CS_INVALID_HANDLE;
-    return 0;
-  }
-  return Handle{source, property, Handle::kProperty};
-}
-
-wpi::ArrayRef<CS_Property> EnumerateSourceProperties(
-    CS_Source source, wpi::SmallVectorImpl<CS_Property>& vec,
-    CS_Status* status) {
-  auto data = Instance::GetInstance().GetSource(source);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return 0;
-  }
-  wpi::SmallVector<int, 32> properties_buf;
-  for (auto property :
-       data->source->EnumerateProperties(properties_buf, status))
-    vec.push_back(Handle{source, property, Handle::kProperty});
-  return vec;
-}
-
 VideoMode GetSourceVideoMode(CS_Source source, CS_Status* status) {
   auto data = Instance::GetInstance().GetSource(source);
   if (!data) {
@@ -325,44 +400,6 @@ bool SetSourceFPS(CS_Source source, int fps, CS_Status* status) {
   return data->source->SetFPS(fps, status);
 }
 
-bool SetSourceConfigJson(CS_Source source, wpi::StringRef config,
-                         CS_Status* status) {
-  auto data = Instance::GetInstance().GetSource(source);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return false;
-  }
-  return data->source->SetConfigJson(config, status);
-}
-
-bool SetSourceConfigJson(CS_Source source, const wpi::json& config,
-                         CS_Status* status) {
-  auto data = Instance::GetInstance().GetSource(source);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return false;
-  }
-  return data->source->SetConfigJson(config, status);
-}
-
-std::string GetSourceConfigJson(CS_Source source, CS_Status* status) {
-  auto data = Instance::GetInstance().GetSource(source);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return std::string{};
-  }
-  return data->source->GetConfigJson(status);
-}
-
-wpi::json GetSourceConfigJsonObject(CS_Source source, CS_Status* status) {
-  auto data = Instance::GetInstance().GetSource(source);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return wpi::json{};
-  }
-  return data->source->GetConfigJsonObject(status);
-}
-
 std::vector<VideoMode> EnumerateSourceVideoModes(CS_Source source,
                                                  CS_Status* status) {
   auto data = Instance::GetInstance().GetSource(source);
@@ -383,28 +420,6 @@ wpi::ArrayRef<CS_Sink> EnumerateSourceSinks(CS_Source source,
     return wpi::ArrayRef<CS_Sink>{};
   }
   return inst.EnumerateSourceSinks(source, vec);
-}
-
-CS_Source CopySource(CS_Source source, CS_Status* status) {
-  if (source == 0) return 0;
-  auto data = Instance::GetInstance().GetSource(source);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return 0;
-  }
-  data->refCount++;
-  return source;
-}
-
-void ReleaseSource(CS_Source source, CS_Status* status) {
-  if (source == 0) return;
-  auto& inst = Instance::GetInstance();
-  auto data = inst.GetSource(source);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return;
-  }
-  if (data->refCount-- == 0) inst.DestroySource(source);
 }
 
 //
@@ -536,71 +551,6 @@ wpi::StringRef GetSinkDescription(CS_Sink sink, wpi::SmallVectorImpl<char>& buf,
   return data->sink->GetDescription(buf);
 }
 
-CS_Property GetSinkProperty(CS_Sink sink, const wpi::Twine& name,
-                            CS_Status* status) {
-  auto data = Instance::GetInstance().GetSink(sink);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return 0;
-  }
-  int property = data->sink->GetPropertyIndex(name);
-  if (property < 0) {
-    *status = CS_INVALID_HANDLE;
-    return 0;
-  }
-  return Handle{sink, property, Handle::kSinkProperty};
-}
-
-wpi::ArrayRef<CS_Property> EnumerateSinkProperties(
-    CS_Sink sink, wpi::SmallVectorImpl<CS_Property>& vec, CS_Status* status) {
-  auto data = Instance::GetInstance().GetSink(sink);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return 0;
-  }
-  wpi::SmallVector<int, 32> properties_buf;
-  for (auto property : data->sink->EnumerateProperties(properties_buf, status))
-    vec.push_back(Handle{sink, property, Handle::kSinkProperty});
-  return vec;
-}
-
-bool SetSinkConfigJson(CS_Sink sink, wpi::StringRef config, CS_Status* status) {
-  auto data = Instance::GetInstance().GetSink(sink);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return false;
-  }
-  return data->sink->SetConfigJson(config, status);
-}
-
-bool SetSinkConfigJson(CS_Sink sink, const wpi::json& config,
-                       CS_Status* status) {
-  auto data = Instance::GetInstance().GetSink(sink);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return false;
-  }
-  return data->sink->SetConfigJson(config, status);
-}
-
-std::string GetSinkConfigJson(CS_Sink sink, CS_Status* status) {
-  auto data = Instance::GetInstance().GetSink(sink);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return std::string{};
-  }
-  return data->sink->GetConfigJson(status);
-}
-
-wpi::json GetSinkConfigJsonObject(CS_Sink sink, CS_Status* status) {
-  auto data = Instance::GetInstance().GetSink(sink);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return wpi::json{};
-  }
-  return data->sink->GetConfigJsonObject(status);
-}
-
 void SetSinkSource(CS_Sink sink, CS_Source source, CS_Status* status) {
   auto data = Instance::GetInstance().GetSink(sink);
   if (!data) {
@@ -636,29 +586,7 @@ CS_Property GetSinkSourceProperty(CS_Sink sink, const wpi::Twine& name,
     *status = CS_INVALID_HANDLE;
     return 0;
   }
-  return GetSourceProperty(data->sourceHandle.load(), name, status);
-}
-
-CS_Sink CopySink(CS_Sink sink, CS_Status* status) {
-  if (sink == 0) return 0;
-  auto data = Instance::GetInstance().GetSink(sink);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return 0;
-  }
-  data->refCount++;
-  return sink;
-}
-
-void ReleaseSink(CS_Sink sink, CS_Status* status) {
-  if (sink == 0) return;
-  auto& inst = Instance::GetInstance();
-  auto data = inst.GetSink(sink);
-  if (!data) {
-    *status = CS_INVALID_HANDLE;
-    return;
-  }
-  if (data->refCount-- == 0) inst.DestroySink(sink);
+  return GetNodeProperty(data->sourceHandle.load(), name, status);
 }
 
 //

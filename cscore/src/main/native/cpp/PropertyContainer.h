@@ -61,6 +61,12 @@ class PropertyContainer {
                          wpi::StringRef logName, CS_Status* status);
   wpi::json GetPropertiesJsonObject(CS_Status* status);
 
+  virtual bool SetConfigJson(wpi::StringRef config, CS_Status* status) = 0;
+  virtual bool SetConfigJsonObject(const wpi::json& config,
+                                   CS_Status* status) = 0;
+  std::string GetConfigJson(CS_Status* status);
+  virtual wpi::json GetConfigJsonObject(CS_Status* status) = 0;
+
   /**
    * Parameters are property index and property data.
    */

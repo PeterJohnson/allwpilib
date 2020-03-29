@@ -29,8 +29,8 @@ extern "C" {
  * Any time a source or sink handle is returned or provided to a callback,
  * the reference count is incremented.
  *
- * <p>Calling CS_ReleaseSource() or CS_ReleaseSink() decrements the reference
- * count, and when the reference count reaches zero, the object is destroyed.
+ * <p>Calling CS_ReleaseNode() decrements the reference count, and when the
+ * reference count reaches zero, the object is destroyed.
  *
  * <p>Connecting a source to a sink increments the reference count of the
  * source, and when the sink is destroyed (its reference count reaches zero),
@@ -259,6 +259,22 @@ char** CS_GetEnumPropertyChoices(CS_Property property, int* count,
 /** @} */
 
 /**
+ * @defgroup cscore_node_cfunc Source/Sink Common Node Functions
+ * @{
+ */
+CS_Property CS_GetNodeProperty(CS_Handle node, const char* name,
+                               CS_Status* status);
+CS_Property* CS_EnumerateNodeProperties(CS_Handle node, int* count,
+                                        CS_Status* status);
+CS_Bool CS_SetNodeConfigJson(CS_Handle node, const char* config,
+                             CS_Status* status);
+char* CS_GetNodeConfigJson(CS_Handle node, CS_Status* status);
+CS_Handle CS_CopyNode(CS_Handle node, CS_Status* status);
+void CS_ReleaseNode(CS_Handle node, CS_Status* status);
+CS_Bool CS_IsNodeEnabled(CS_Handle node, CS_Status* status);
+/** @} */
+
+/**
  * @defgroup cscore_source_create_cfunc Source Creation Functions
  * @{
  */
@@ -286,11 +302,6 @@ void CS_SetSourceConnectionStrategy(CS_Source source,
                                     enum CS_ConnectionStrategy strategy,
                                     CS_Status* status);
 CS_Bool CS_IsSourceConnected(CS_Source source, CS_Status* status);
-CS_Bool CS_IsSourceEnabled(CS_Source source, CS_Status* status);
-CS_Property CS_GetSourceProperty(CS_Source source, const char* name,
-                                 CS_Status* status);
-CS_Property* CS_EnumerateSourceProperties(CS_Source source, int* count,
-                                          CS_Status* status);
 void CS_GetSourceVideoMode(CS_Source source, CS_VideoMode* mode,
                            CS_Status* status);
 CS_Bool CS_SetSourceVideoMode(CS_Source source, const CS_VideoMode* mode,
@@ -305,15 +316,10 @@ CS_Bool CS_SetSourcePixelFormat(CS_Source source,
 CS_Bool CS_SetSourceResolution(CS_Source source, int width, int height,
                                CS_Status* status);
 CS_Bool CS_SetSourceFPS(CS_Source source, int fps, CS_Status* status);
-CS_Bool CS_SetSourceConfigJson(CS_Source source, const char* config,
-                               CS_Status* status);
-char* CS_GetSourceConfigJson(CS_Source source, CS_Status* status);
 CS_VideoMode* CS_EnumerateSourceVideoModes(CS_Source source, int* count,
                                            CS_Status* status);
 CS_Sink* CS_EnumerateSourceSinks(CS_Source source, int* count,
                                  CS_Status* status);
-CS_Source CS_CopySource(CS_Source source, CS_Status* status);
-void CS_ReleaseSource(CS_Source source, CS_Status* status);
 /** @} */
 
 /**
@@ -385,19 +391,10 @@ CS_Sink CS_CreateImageSink(const char* name, CS_Status* status);
 enum CS_SinkKind CS_GetSinkKind(CS_Sink sink, CS_Status* status);
 char* CS_GetSinkName(CS_Sink sink, CS_Status* status);
 char* CS_GetSinkDescription(CS_Sink sink, CS_Status* status);
-CS_Property CS_GetSinkProperty(CS_Sink sink, const char* name,
-                               CS_Status* status);
-CS_Property* CS_EnumerateSinkProperties(CS_Sink sink, int* count,
-                                        CS_Status* status);
 void CS_SetSinkSource(CS_Sink sink, CS_Source source, CS_Status* status);
 CS_Property CS_GetSinkSourceProperty(CS_Sink sink, const char* name,
                                      CS_Status* status);
-CS_Bool CS_SetSinkConfigJson(CS_Sink sink, const char* config,
-                             CS_Status* status);
-char* CS_GetSinkConfigJson(CS_Sink sink, CS_Status* status);
 CS_Source CS_GetSinkSource(CS_Sink sink, CS_Status* status);
-CS_Sink CS_CopySink(CS_Sink sink, CS_Status* status);
-void CS_ReleaseSink(CS_Sink sink, CS_Status* status);
 /** @} */
 
 /**
