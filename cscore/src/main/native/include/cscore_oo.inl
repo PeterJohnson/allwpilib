@@ -8,6 +8,14 @@
 #ifndef CSCORE_OO_INL_
 #define CSCORE_OO_INL_
 
+#if defined(_MSC_VER)
+#pragma warning( push )
+#pragma warning( disable : 4996 )
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 namespace cs {
 
 inline std::string VideoProperty::GetName() const {
@@ -559,6 +567,107 @@ inline void ImageSink::SetEnabled(bool enabled) {
   SetSinkEnabled(m_handle, enabled, &m_status);
 }
 
+inline VideoServer::VideoServer(const ServerConfig& config) {
+  m_handle = StartServer(config, &m_status);
+}
+
+inline VideoServer::VideoServer(wpi::StringRef config) {
+  m_handle = StartServerJson(config, &m_status);
+}
+
+inline VideoServer::VideoServer(const wpi::json& config) {
+  m_handle = StartServerJson(config, &m_status);
+}
+
+inline VideoServer::VideoServer(const wpi::Twine& listenAddress,
+                                unsigned int port) {
+  ServerConfig config;
+  config.address = listenAddress.str();
+  config.port = port;
+  m_handle = StartServer(config, &m_status);
+}
+
+inline VideoServer::VideoServer(const wpi::Twine& listenAddress,
+                                unsigned int port,
+                                const VideoSource& defaultSource) {
+  ServerConfig config;
+  config.address = listenAddress.str();
+  config.port = port;
+  config.defaultSource = defaultSource.GetHandle();
+  m_handle = StartServer(config, &m_status);
+}
+
+inline VideoServer::VideoServer(unsigned int port) {
+  ServerConfig config;
+  config.port = port;
+  m_handle = StartServer(config, &m_status);
+}
+
+inline VideoServer::VideoServer(unsigned int port,
+                                const VideoSource& defaultSource) {
+  ServerConfig config;
+  config.port = port;
+  config.defaultSource = defaultSource.GetHandle();
+  m_handle = StartServer(config, &m_status);
+}
+
+inline VideoServer::VideoServer(VideoServer&& rhs) noexcept
+    : VideoNode(std::move(rhs)), m_owned(rhs.m_owned) {
+  rhs.m_owned = false;
+}
+
+inline VideoServer& VideoServer::operator=(VideoServer&& rhs) noexcept {
+  VideoNode::operator=(std::move(rhs));
+  m_owned = rhs.m_owned;
+  rhs.m_owned = false;
+  return *this;
+}
+
+inline VideoServer::~VideoServer() noexcept {
+  if (m_owned && m_handle != 0) Stop();
+}
+
+inline void VideoServer::Stop() {
+  m_status = 0;
+  StopServer(m_handle, &m_status);
+}
+
+inline void VideoServer::StopAll() { StopAllServers(); }
+
+inline ServerConfig VideoServer::GetConfig() const {
+  m_status = 0;
+  return GetServerConfig(m_handle, &m_status);
+}
+
+inline std::string VideoServer::GetListenAddress() const {
+  return GetConfig().address;
+}
+
+inline unsigned int VideoServer::GetPort() const { return GetConfig().port; }
+
+inline void VideoServer::SetResolution(const VideoSource& source, int width,
+                                       int height) {
+  m_status = 0;
+  SetServerResolution(m_handle, source.GetHandle(), width, height, &m_status);
+}
+
+inline void VideoServer::SetFPS(const VideoSource& source, int fps) {
+  m_status = 0;
+  SetServerFPS(m_handle, source.GetHandle(), fps, &m_status);
+}
+
+inline void VideoServer::SetJpegQuality(const VideoSource& source,
+                                        int quality) {
+  m_status = 0;
+  SetServerJpegQuality(m_handle, source.GetHandle(), quality, &m_status);
+}
+
+inline void VideoServer::SetDefaultJpegQuality(const VideoSource& source,
+                                               int quality) {
+  m_status = 0;
+  SetServerJpegQuality(m_handle, source.GetHandle(), quality, &m_status);
+}
+
 inline VideoSource VideoEvent::GetSource() const {
   CS_Status status = 0;
   return VideoSource{sourceHandle == 0 ? 0 : CopyNode(sourceHandle, &status)};
@@ -567,6 +676,10 @@ inline VideoSource VideoEvent::GetSource() const {
 inline VideoSink VideoEvent::GetSink() const {
   CS_Status status = 0;
   return VideoSink{sinkHandle == 0 ? 0 : CopyNode(sinkHandle, &status)};
+}
+
+inline VideoServer VideoEvent::GetServer() const {
+  return VideoServer{serverHandle, false};
 }
 
 inline VideoProperty VideoEvent::GetProperty() const {
@@ -601,5 +714,11 @@ inline VideoListener::~VideoListener() {
 }
 
 }  // namespace cs
+
+#if defined(_MSC_VER)
+#pragma warning( pop )
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 #endif  /* CSCORE_OO_INL_ */

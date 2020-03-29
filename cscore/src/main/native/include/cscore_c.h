@@ -51,6 +51,7 @@ typedef CS_Handle CS_Property;
 typedef CS_Handle CS_Listener;
 typedef CS_Handle CS_Sink;
 typedef CS_Handle CS_Source;
+typedef CS_Handle CS_Server;
 /** @} */
 
 /**
@@ -152,25 +153,30 @@ enum CS_SinkKind {
  * Listener event kinds
  */
 enum CS_EventKind {
-  CS_SOURCE_CREATED = 0x0001,
-  CS_SOURCE_DESTROYED = 0x0002,
-  CS_SOURCE_CONNECTED = 0x0004,
-  CS_SOURCE_DISCONNECTED = 0x0008,
-  CS_SOURCE_VIDEOMODES_UPDATED = 0x0010,
-  CS_SOURCE_VIDEOMODE_CHANGED = 0x0020,
-  CS_SOURCE_PROPERTY_CREATED = 0x0040,
-  CS_SOURCE_PROPERTY_VALUE_UPDATED = 0x0080,
-  CS_SOURCE_PROPERTY_CHOICES_UPDATED = 0x0100,
-  CS_SINK_SOURCE_CHANGED = 0x0200,
-  CS_SINK_CREATED = 0x0400,
-  CS_SINK_DESTROYED = 0x0800,
-  CS_SINK_ENABLED = 0x1000,
-  CS_SINK_DISABLED = 0x2000,
-  CS_NETWORK_INTERFACES_CHANGED = 0x4000,
-  CS_TELEMETRY_UPDATED = 0x8000,
-  CS_SINK_PROPERTY_CREATED = 0x10000,
-  CS_SINK_PROPERTY_VALUE_UPDATED = 0x20000,
-  CS_SINK_PROPERTY_CHOICES_UPDATED = 0x40000
+  CS_SOURCE_CREATED = 0x00000001,
+  CS_SOURCE_DESTROYED = 0x00000002,
+  CS_SOURCE_CONNECTED = 0x00000004,
+  CS_SOURCE_DISCONNECTED = 0x00000008,
+  CS_SOURCE_VIDEOMODES_UPDATED = 0x00000010,
+  CS_SOURCE_VIDEOMODE_CHANGED = 0x00000020,
+  CS_SOURCE_PROPERTY_CREATED = 0x00000040,
+  CS_SOURCE_PROPERTY_VALUE_UPDATED = 0x00000080,
+  CS_SOURCE_PROPERTY_CHOICES_UPDATED = 0x00000100,
+  CS_SINK_SOURCE_CHANGED = 0x00000200,
+  CS_SINK_CREATED = 0x00000400,
+  CS_SINK_DESTROYED = 0x00000800,
+  CS_SINK_ENABLED = 0x00001000,
+  CS_SINK_DISABLED = 0x00002000,
+  CS_NETWORK_INTERFACES_CHANGED = 0x00004000,
+  CS_TELEMETRY_UPDATED = 0x00008000,
+  CS_SINK_PROPERTY_CREATED = 0x00010000,
+  CS_SINK_PROPERTY_VALUE_UPDATED = 0x00020000,
+  CS_SINK_PROPERTY_CHOICES_UPDATED = 0x00040000,
+  CS_SERVER_STARTED = 0x00080000,
+  CS_SERVER_STOPPED = 0x00100000,
+  CS_SERVER_PROPERTY_CREATED = 0x0020000,
+  CS_SERVER_PROPERTY_VALUE_UPDATED = 0x00400000,
+  CS_SERVER_PROPERTY_CHOICES_UPDATED = 0x00800000
 };
 
 /**
@@ -203,14 +209,35 @@ enum CS_ConnectionStrategy {
 };
 
 /**
+ * Server configuration
+ */
+typedef struct CS_ServerConfig {
+  // Listen address.
+  char* address;
+
+  // Listen port for this server.
+  unsigned int port;
+
+  // If not 0, the source to stream when no source is specified in request
+  CS_Source defaultSource;
+
+  // Count of onlySources (if 0, all sources can be streamed).
+  int onlySourcesCount;
+
+  // Only allow specified sources to be streamed through this particular server
+  CS_Source* onlySources;
+} CS_ServerConfig;
+
+/**
  * Listener event
  */
 struct CS_Event {
   enum CS_EventKind kind;
 
-  // Valid for CS_SOURCE_* and CS_SINK_* respectively
+  // Valid for CS_SOURCE_* and CS_SINK_* and CS_SERVER_* respectively
   CS_Source source;
   CS_Sink sink;
+  CS_Server server;
 
   // Source/sink/property name
   const char* name;
@@ -223,6 +250,9 @@ struct CS_Event {
   enum CS_PropertyKind propertyKind;
   int value;
   const char* valueStr;
+
+  // Fields for CS_SERVER_STARTED and CS_SERVER_STOPPED events
+  CS_ServerConfig serverConfig;
 };
 
 /**
@@ -259,7 +289,7 @@ char** CS_GetEnumPropertyChoices(CS_Property property, int* count,
 /** @} */
 
 /**
- * @defgroup cscore_node_cfunc Source/Sink Common Node Functions
+ * @defgroup cscore_node_cfunc Source/Sink/Server Common Node Functions
  * @{
  */
 CS_Property CS_GetNodeProperty(CS_Handle node, const char* name,
@@ -413,6 +443,26 @@ void CS_SetSinkEnabled(CS_Sink sink, CS_Bool enabled, CS_Status* status);
 /** @} */
 
 /**
+ * @defgroup cscore_server_func Network Server Functions
+ * @{
+ */
+CS_Server CS_StartServer(const CS_ServerConfig* config, CS_Status* status);
+CS_Server CS_StartServerJson(const char* config, CS_Status* status);
+void CS_StopServer(CS_Server server, CS_Status* status);
+void CS_StopAllServers(void);
+
+CS_ServerConfig CS_GetServerConfig(CS_Server server, CS_Status* status);
+void CS_SetServerResolution(CS_Server server, CS_Source source, int width,
+                            int height, CS_Status* status);
+void CS_SetServerFPS(CS_Server server, CS_Source source, int fps,
+                     CS_Status* status);
+void CS_SetServerJpegQuality(CS_Server server, CS_Source source, int quality,
+                             CS_Status* status);
+void CS_SetServerDefaultJpegQuality(CS_Server server, CS_Source source,
+                                    int quality, CS_Status* status);
+/** @} */
+
+/**
  * @defgroup cscore_listener_cfunc Listener Functions
  * @{
  */
@@ -473,7 +523,7 @@ void CS_ReleaseEnumeratedSinks(CS_Sink* sinks, int count);
 void CS_FreeString(char* str);
 void CS_FreeEnumPropertyChoices(char** choices, int count);
 void CS_FreeUsbCameraInfo(CS_UsbCameraInfo* info);
-void CS_FreeHttpCameraUrls(char** urls, int count);
+void CS_FreeNetworkSourceUrls(char** urls, int count);
 
 void CS_FreeEnumeratedProperties(CS_Property* properties, int count);
 void CS_FreeEnumeratedVideoModes(CS_VideoMode* modes, int count);

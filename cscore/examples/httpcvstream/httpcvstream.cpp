@@ -14,13 +14,14 @@
 #include "cscore_cv.h"
 
 int main() {
-  cs::HttpCamera camera{"httpcam", "http://localhost:8081/?action=stream"};
+  cs::NetworkSource camera{"httpcam", "http://localhost:8081/?action=stream"};
   camera.SetVideoMode(cs::VideoMode::kMJPEG, 320, 240, 30);
   cs::CvSink cvsink{"cvsink"};
   cvsink.SetSource(camera);
   cs::CvSource cvsource{"cvsource", cs::VideoMode::kMJPEG, 320, 240, 30};
-  cs::MjpegServer cvMjpegServer{"cvhttpserver", 8083};
-  cvMjpegServer.SetSource(cvsource);
+  cs::ServerConfig config{8083};
+  config.defaultSource = cvsource.GetHandle();
+  cs::VideoServer videoServer{config};
 
   cv::Mat test;
   cv::Mat flip;

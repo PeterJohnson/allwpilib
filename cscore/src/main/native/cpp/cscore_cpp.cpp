@@ -17,6 +17,7 @@
 #include "NetworkListener.h"
 #include "Notifier.h"
 #include "PropertyContainer.h"
+#include "ServerImpl.h"
 #include "SinkImpl.h"
 #include "SourceImpl.h"
 #include "Telemetry.h"
@@ -35,6 +36,11 @@ static std::shared_ptr<PropertyContainer> GetPropertyContainer(
     if (auto data = Instance::GetInstance().GetSink(handle)) {
       if (propertyType) *propertyType = Handle::kSinkProperty;
       return data->sink;
+    }
+  } else if (h.IsType(Handle::kServer)) {
+    if (auto data = Instance::GetInstance().GetServer(handle)) {
+      if (propertyType) *propertyType = Handle::kServerProperty;
+      return data->server;
     }
   }
   *status = CS_INVALID_HANDLE;
@@ -56,6 +62,13 @@ static std::shared_ptr<PropertyContainer> GetProperty(
     if (auto data = Instance::GetInstance().GetSink(Handle{i, Handle::kSink})) {
       *propertyIndex = handle.GetIndex();
       return data->sink;
+    }
+  } else if (handle.IsType(Handle::kServerProperty)) {
+    int i = handle.GetParentIndex();
+    if (auto data =
+            Instance::GetInstance().GetServer(Handle{i, Handle::kServer})) {
+      *propertyIndex = handle.GetIndex();
+      return data->server;
     }
   }
   *status = CS_INVALID_HANDLE;
@@ -235,6 +248,11 @@ CS_Handle CopyNode(CS_Handle node, CS_Status* status) {
       data->refCount++;
       return node;
     }
+  } else if (handle.IsType(Handle::kServer)) {
+    if (auto data = inst.GetServer(node)) {
+      data->refCount++;
+      return node;
+    }
   }
   *status = CS_INVALID_HANDLE;
   return 0;
@@ -254,6 +272,11 @@ void ReleaseNode(CS_Handle node, CS_Status* status) {
       if (data->refCount-- == 0) inst.DestroySink(node);
       return;
     }
+  } else if (handle.IsType(Handle::kServer)) {
+    if (auto data = inst.GetServer(node)) {
+      if (data->refCount-- == 0) inst.StopServer(node);
+      return;
+    }
   }
   *status = CS_INVALID_HANDLE;
 }
@@ -265,6 +288,8 @@ bool IsNodeEnabled(CS_Handle node, CS_Status* status) {
     if (auto data = inst.GetSource(node)) return data->source->IsEnabled();
   } else if (handle.IsType(Handle::kSink)) {
     if (auto data = inst.GetSink(node)) return data->sink->IsEnabled();
+  } else if (handle.IsType(Handle::kServer)) {
+    return true;
   }
   *status = CS_INVALID_HANDLE;
   return false;
@@ -588,6 +613,28 @@ CS_Property GetSinkSourceProperty(CS_Sink sink, const wpi::Twine& name,
   }
   return GetNodeProperty(data->sourceHandle.load(), name, status);
 }
+
+//
+// Server Functions
+//
+
+CS_Server StartServer(const ServerConfig& config, CS_Status* status) {
+  return Instance::GetInstance().StartServer(config);
+}
+
+CS_Server StartServerJson(wpi::StringRef config, CS_Status* status) {
+  return Instance::GetInstance().StartServer(config);
+}
+
+CS_Server StartServerJson(const wpi::json& config, CS_Status* status) {
+  return Instance::GetInstance().StartServer(config);
+}
+
+void StopServer(CS_Server server, CS_Status* status) {
+  Instance::GetInstance().StopServer(server);
+}
+
+void StopAllServers() { Instance::GetInstance().StopAllServers(); }
 
 //
 // Listener Functions
