@@ -14,7 +14,7 @@ package edu.wpi.cscore;
  */
 public class VideoSource extends VideoNode {
   public enum Kind {
-    kUnknown(0), kUsb(1), kHttp(2), kImage(4);
+    kUnknown(0), kUsb(1), kNetwork(2), kImage(4);
 
     @SuppressWarnings("MemberName")
     private final int value;
@@ -71,7 +71,7 @@ public class VideoSource extends VideoNode {
   public static Kind getKindFromInt(int kind) {
     switch (kind) {
       case 1: return Kind.kUsb;
-      case 2: return Kind.kHttp;
+      case 2: return Kind.kNetwork;
       case 4: return Kind.kImage;
       default: return Kind.kUnknown;
     }

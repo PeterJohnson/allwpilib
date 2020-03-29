@@ -30,8 +30,7 @@ namespace cs {
 
 class HttpCameraImpl : public SourceImpl {
  public:
-  HttpCameraImpl(const wpi::Twine& name, CS_HttpCameraKind kind,
-                 wpi::Logger& logger);
+  HttpCameraImpl(const wpi::Twine& name, wpi::Logger& logger);
   ~HttpCameraImpl() override;
 
   void Start() override;
@@ -128,7 +127,7 @@ class HttpCameraImpl : public SourceImpl {
   std::unique_ptr<wpi::HttpConnection> m_streamConn;
   std::unique_ptr<wpi::HttpConnection> m_settingsConn;
 
-  CS_HttpCameraKind m_kind;
+  CS_HttpCameraKind m_kind{CS_HTTP_UNKNOWN};
 
   std::vector<wpi::HttpLocation> m_locations;
   size_t m_nextLocation{0};
@@ -145,19 +144,6 @@ class HttpCameraImpl : public SourceImpl {
   std::atomic_bool m_streamSettingsUpdated{false};
 
   wpi::condition_variable m_monitorCond;
-};
-
-class AxisCameraImpl : public HttpCameraImpl {
- public:
-  AxisCameraImpl(const wpi::Twine& name, wpi::Logger& logger)
-      : HttpCameraImpl{name, CS_HTTP_AXIS, logger} {}
-#if 0
-  void SetProperty(int property, int value, CS_Status* status) override;
-  void SetStringProperty(int property, const wpi::Twine& value,
-                         CS_Status* status) override;
-#endif
- protected:
-  bool CacheProperties(CS_Status* status) const override;
 };
 
 }  // namespace cs

@@ -592,12 +592,12 @@ Java_edu_wpi_cscore_CameraServerJNI_createUsbCameraPath
 
 /*
  * Class:     edu_wpi_cscore_CameraServerJNI
- * Method:    createHttpCamera
+ * Method:    createNetworkSource
  * Signature: (Ljava/lang/String;Ljava/lang/String;I)I
  */
 JNIEXPORT jint JNICALL
-Java_edu_wpi_cscore_CameraServerJNI_createHttpCamera
-  (JNIEnv* env, jclass, jstring name, jstring url, jint kind)
+Java_edu_wpi_cscore_CameraServerJNI_createNetworkSource
+  (JNIEnv* env, jclass, jstring name, jstring url)
 {
   if (!name) {
     nullPointerEx.Throw(env, "name cannot be null");
@@ -608,21 +608,20 @@ Java_edu_wpi_cscore_CameraServerJNI_createHttpCamera
     return 0;
   }
   CS_Status status = 0;
-  auto val = cs::CreateHttpCamera(
-      JStringRef{env, name}.str(), JStringRef{env, url}.str(),
-      static_cast<CS_HttpCameraKind>(kind), &status);
+  auto val = cs::CreateNetworkSource(JStringRef{env, name}.str(),
+                                     JStringRef{env, url}.str().str(), &status);
   CheckStatus(env, status);
   return val;
 }
 
 /*
  * Class:     edu_wpi_cscore_CameraServerJNI
- * Method:    createHttpCameraMulti
+ * Method:    createNetworkSourceMulti
  * Signature: (Ljava/lang/String;[Ljava/lang/Object;I)I
  */
 JNIEXPORT jint JNICALL
-Java_edu_wpi_cscore_CameraServerJNI_createHttpCameraMulti
-  (JNIEnv* env, jclass, jstring name, jobjectArray urls, jint kind)
+Java_edu_wpi_cscore_CameraServerJNI_createNetworkSourceMulti
+  (JNIEnv* env, jclass, jstring name, jobjectArray urls)
 {
   if (!name) {
     nullPointerEx.Throw(env, "name cannot be null");
@@ -645,9 +644,7 @@ Java_edu_wpi_cscore_CameraServerJNI_createHttpCameraMulti
     vec.push_back(JStringRef{env, elem}.str());
   }
   CS_Status status = 0;
-  auto val =
-      cs::CreateHttpCamera(JStringRef{env, name}.str(), vec,
-                           static_cast<CS_HttpCameraKind>(kind), &status);
+  auto val = cs::CreateNetworkSource(JStringRef{env, name}.str(), vec, &status);
   CheckStatus(env, status);
   return val;
 }
@@ -1032,26 +1029,11 @@ Java_edu_wpi_cscore_CameraServerJNI_getUsbCameraInfo
 
 /*
  * Class:     edu_wpi_cscore_CameraServerJNI
- * Method:    getHttpCameraKind
- * Signature: (I)I
- */
-JNIEXPORT jint JNICALL
-Java_edu_wpi_cscore_CameraServerJNI_getHttpCameraKind
-  (JNIEnv* env, jclass, jint source)
-{
-  CS_Status status = 0;
-  auto kind = cs::GetHttpCameraKind(source, &status);
-  if (!CheckStatus(env, status)) return 0;
-  return kind;
-}
-
-/*
- * Class:     edu_wpi_cscore_CameraServerJNI
- * Method:    setHttpCameraUrls
+ * Method:    setNetworkSourceUrls
  * Signature: (I[Ljava/lang/Object;)V
  */
 JNIEXPORT void JNICALL
-Java_edu_wpi_cscore_CameraServerJNI_setHttpCameraUrls
+Java_edu_wpi_cscore_CameraServerJNI_setNetworkSourceUrls
   (JNIEnv* env, jclass, jint source, jobjectArray urls)
 {
   if (!urls) {
@@ -1071,21 +1053,21 @@ Java_edu_wpi_cscore_CameraServerJNI_setHttpCameraUrls
     vec.push_back(JStringRef{env, elem}.str());
   }
   CS_Status status = 0;
-  cs::SetHttpCameraUrls(source, vec, &status);
+  cs::SetNetworkSourceUrls(source, vec, &status);
   CheckStatus(env, status);
 }
 
 /*
  * Class:     edu_wpi_cscore_CameraServerJNI
- * Method:    getHttpCameraUrls
+ * Method:    getNetworkSourceUrls
  * Signature: (I)[Ljava/lang/Object;
  */
 JNIEXPORT jobjectArray JNICALL
-Java_edu_wpi_cscore_CameraServerJNI_getHttpCameraUrls
+Java_edu_wpi_cscore_CameraServerJNI_getNetworkSourceUrls
   (JNIEnv* env, jclass, jint source)
 {
   CS_Status status = 0;
-  auto arr = cs::GetHttpCameraUrls(source, &status);
+  auto arr = cs::GetNetworkSourceUrls(source, &status);
   if (!CheckStatus(env, status)) return nullptr;
   return MakeJStringArray(env, arr);
 }
