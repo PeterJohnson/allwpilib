@@ -59,11 +59,7 @@ public class CameraServerCvJNI {
     libraryLoaded = true;
   }
 
-  public static native int createCvSource(String name, int pixelFormat, int width, int height, int fps);
-
   public static native void putSourceFrame(int source, long imageNativeObj);
-
-  public static native int createCvSink(String name);
 
   public static native long grabSinkFrame(int sink, long imageNativeObj);
   public static native long grabSinkFrameTimeout(int sink, long imageNativeObj, double timeout);
