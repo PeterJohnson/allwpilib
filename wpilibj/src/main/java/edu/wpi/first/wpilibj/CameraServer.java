@@ -80,8 +80,8 @@ public final class CameraServer {
     switch (VideoSource.getKindFromInt(CameraServerJNI.getSourceKind(source))) {
       case kUsb:
         return "usb:" + CameraServerJNI.getUsbCameraPath(source);
-      case kHttp: {
-        String[] urls = CameraServerJNI.getHttpCameraUrls(source);
+      case kNetwork: {
+        String[] urls = CameraServerJNI.getNetworkSourceUrls(source);
         if (urls.length > 0) {
           return "ip:" + urls[0];
         } else {
@@ -134,14 +134,14 @@ public final class CameraServer {
 
   @SuppressWarnings({"JavadocMethod", "PMD.AvoidUsingHardCodedIP"})
   private synchronized String[] getSourceStreamValues(int source) {
-    // Ignore all but HttpCamera
+    // Ignore all but network source
     if (VideoSource.getKindFromInt(CameraServerJNI.getSourceKind(source))
-            != VideoSource.Kind.kHttp) {
+            != VideoSource.Kind.kNetwork) {
       return new String[0];
     }
 
     // Generate values
-    String[] values = CameraServerJNI.getHttpCameraUrls(source);
+    String[] values = CameraServerJNI.getNetworkSourceUrls(source);
     for (int j = 0; j < values.length; j++) {
       values[j] = "mjpg:" + values[j];
     }
@@ -180,9 +180,9 @@ public final class CameraServer {
       }
       NetworkTable table = m_tables.get(source);
       if (table != null) {
-        // Don't set stream values if this is a HttpCamera passthrough
+        // Don't set stream values if this is a network source passthrough
         if (VideoSource.getKindFromInt(CameraServerJNI.getSourceKind(source))
-            == VideoSource.Kind.kHttp) {
+            == VideoSource.Kind.kNetwork) {
           continue;
         }
 

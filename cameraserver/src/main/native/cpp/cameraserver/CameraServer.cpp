@@ -70,10 +70,10 @@ static wpi::StringRef MakeSourceValue(CS_Source source,
       buf.append(path.begin(), path.end());
       break;
     }
-    case CS_SOURCE_HTTP: {
+    case CS_SOURCE_NETWORK: {
       wpi::StringRef prefix{"ip:"};
       buf.append(prefix.begin(), prefix.end());
-      auto urls = cs::GetHttpCameraUrls(source, &status);
+      auto urls = cs::GetNetworkSourceUrls(source, &status);
       if (!urls.empty()) buf.append(urls[0].begin(), urls[0].end());
       break;
     }
@@ -131,12 +131,12 @@ std::vector<std::string> CameraServer::Impl::GetSourceStreamValues(
     CS_Source source) {
   CS_Status status = 0;
 
-  // Ignore all but HttpCamera
-  if (cs::GetSourceKind(source, &status) != CS_SOURCE_HTTP)
+  // Ignore all but NetworkSource
+  if (cs::GetSourceKind(source, &status) != CS_SOURCE_NETWORK)
     return std::vector<std::string>{};
 
   // Generate values
-  auto values = cs::GetHttpCameraUrls(source, &status);
+  auto values = cs::GetNetworkSourceUrls(source, &status);
   for (auto& value : values) value = "mjpg:" + value;
 
 #ifdef __FRC_ROBORIO__
@@ -172,8 +172,8 @@ void CameraServer::Impl::UpdateStreamValues() {
     if (source == 0) continue;
     auto table = m_tables.lookup(source);
     if (table) {
-      // Don't set stream values if this is a HttpCamera passthrough
-      if (cs::GetSourceKind(source, &status) == CS_SOURCE_HTTP) continue;
+      // Don't set stream values if this is a network source passthrough
+      if (cs::GetSourceKind(source, &status) == CS_SOURCE_NETWORK) continue;
 
       // Set table value
       auto values = GetSinkStreamValues(sink);

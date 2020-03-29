@@ -219,11 +219,11 @@ CS_Source CreateUsbCameraDev(const wpi::Twine& name, int dev,
                              CS_Status* status);
 CS_Source CreateUsbCameraPath(const wpi::Twine& name, const wpi::Twine& path,
                               CS_Status* status);
-CS_Source CreateHttpCamera(const wpi::Twine& name, const wpi::Twine& url,
-                           CS_HttpCameraKind kind, CS_Status* status);
-CS_Source CreateHttpCamera(const wpi::Twine& name,
-                           wpi::ArrayRef<std::string> urls,
-                           CS_HttpCameraKind kind, CS_Status* status);
+CS_Source CreateNetworkSource(const wpi::Twine& name, const wpi::Twine& url,
+                              CS_Status* status);
+CS_Source CreateNetworkSource(const wpi::Twine& name,
+                              wpi::ArrayRef<std::string> urls,
+                              CS_Status* status);
 CS_Source CreateImageSource(const wpi::Twine& name, const VideoMode& mode,
                             CS_Status* status);
 /** @} */
@@ -284,13 +284,13 @@ UsbCameraInfo GetUsbCameraInfo(CS_Source source, CS_Status* status);
 /** @} */
 
 /**
- * @defgroup cscore_httpcamera_func HttpCamera Source Functions
+ * @defgroup cscore_network_source_func Network Source Functions
  * @{
  */
-CS_HttpCameraKind GetHttpCameraKind(CS_Source source, CS_Status* status);
-void SetHttpCameraUrls(CS_Source source, wpi::ArrayRef<std::string> urls,
-                       CS_Status* status);
-std::vector<std::string> GetHttpCameraUrls(CS_Source source, CS_Status* status);
+void SetNetworkSourceUrls(CS_Source source, wpi::ArrayRef<std::string> urls,
+                          CS_Status* status);
+std::vector<std::string> GetNetworkSourceUrls(CS_Source source,
+                                              CS_Status* status);
 /** @} */
 
 /**

@@ -125,7 +125,7 @@ enum CS_PropertyKind {
 enum CS_SourceKind {
   CS_SOURCE_UNKNOWN = 0,
   CS_SOURCE_USB = 1,
-  CS_SOURCE_HTTP = 2,
+  CS_SOURCE_NETWORK = 2,
   CS_SOURCE_IMAGE = 4
 };
 
@@ -281,11 +281,10 @@ CS_Bool CS_IsNodeEnabled(CS_Handle node, CS_Status* status);
 CS_Source CS_CreateUsbCameraDev(const char* name, int dev, CS_Status* status);
 CS_Source CS_CreateUsbCameraPath(const char* name, const char* path,
                                  CS_Status* status);
-CS_Source CS_CreateHttpCamera(const char* name, const char* url,
-                              enum CS_HttpCameraKind kind, CS_Status* status);
-CS_Source CS_CreateHttpCameraMulti(const char* name, const char** urls,
-                                   int count, enum CS_HttpCameraKind kind,
-                                   CS_Status* status);
+CS_Source CS_CreateNetworkSource(const char* name, const char* url,
+                                 CS_Status* status);
+CS_Source CS_CreateNetworkSourceMulti(const char* name, const char** urls,
+                                      int count, CS_Status* status);
 CS_Source CS_CreateImageSource(const char* name, const CS_VideoMode* mode,
                                CS_Status* status);
 /** @} */
@@ -347,14 +346,12 @@ CS_UsbCameraInfo* CS_GetUsbCameraInfo(CS_Source source, CS_Status* status);
 /** @} */
 
 /**
- * @defgroup cscore_httpcamera_cfunc HttpCamera Source Functions
+ * @defgroup cscore_network_source_cfunc Network Source Functions
  * @{
  */
-enum CS_HttpCameraKind CS_GetHttpCameraKind(CS_Source source,
-                                            CS_Status* status);
-void CS_SetHttpCameraUrls(CS_Source source, const char** urls, int count,
-                          CS_Status* status);
-char** CS_GetHttpCameraUrls(CS_Source source, int* count, CS_Status* status);
+void CS_SetNetworkSourceUrls(CS_Source source, const char** urls, int count,
+                             CS_Status* status);
+char** CS_GetNetworkSourceUrls(CS_Source source, int* count, CS_Status* status);
 /** @} */
 
 /**

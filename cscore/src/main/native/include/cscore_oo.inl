@@ -270,18 +270,63 @@ inline void UsbCamera::SetConnectVerbose(int level) {
               &m_status);
 }
 
+inline NetworkSource::NetworkSource(const wpi::Twine& name,
+                                    const wpi::Twine& url) {
+  m_handle = CreateNetworkSource(name, url, &m_status);
+}
+
+inline NetworkSource::NetworkSource(const wpi::Twine& name, const char* url) {
+  m_handle = CreateNetworkSource(name, url, &m_status);
+}
+
+inline NetworkSource::NetworkSource(const wpi::Twine& name,
+                                    const std::string& url)
+    : NetworkSource(name, wpi::Twine{url}) {}
+
+inline NetworkSource::NetworkSource(const wpi::Twine& name,
+                                    wpi::ArrayRef<std::string> urls) {
+  m_handle = CreateNetworkSource(name, urls, &m_status);
+}
+
+template <typename T>
+inline NetworkSource::NetworkSource(const wpi::Twine& name,
+                                    std::initializer_list<T> urls) {
+  std::vector<std::string> vec;
+  vec.reserve(urls.size());
+  for (const auto& url : urls) vec.emplace_back(url);
+  m_handle = CreateNetworkSource(name, vec, &m_status);
+}
+
+
+inline void NetworkSource::SetUrls(wpi::ArrayRef<std::string> urls) {
+  m_status = 0;
+  ::cs::SetNetworkSourceUrls(m_handle, urls, &m_status);
+}
+
+template <typename T>
+inline void NetworkSource::SetUrls(std::initializer_list<T> urls) {
+  std::vector<std::string> vec;
+  vec.reserve(urls.size());
+  for (const auto& url : urls) vec.emplace_back(url);
+  m_status = 0;
+  ::cs::SetNetworkSourceUrls(m_handle, vec, &m_status);
+}
+
+inline std::vector<std::string> NetworkSource::GetUrls() const {
+  m_status = 0;
+  return ::cs::GetNetworkSourceUrls(m_handle, &m_status);
+}
+
 inline HttpCamera::HttpCamera(const wpi::Twine& name, const wpi::Twine& url,
-                              HttpCameraKind kind) {
-  m_handle = CreateHttpCamera(
-      name, url, static_cast<CS_HttpCameraKind>(static_cast<int>(kind)),
-      &m_status);
+                              HttpCameraKind kind)
+    : NetworkSource(name, url) {
+  GetProperty("http_kind").Set(kind);
 }
 
 inline HttpCamera::HttpCamera(const wpi::Twine& name, const char* url,
-                              HttpCameraKind kind) {
-  m_handle = CreateHttpCamera(
-      name, url, static_cast<CS_HttpCameraKind>(static_cast<int>(kind)),
-      &m_status);
+                              HttpCameraKind kind)
+    : NetworkSource(name, url) {
+  GetProperty("http_kind").Set(kind);
 }
 
 inline HttpCamera::HttpCamera(const wpi::Twine& name, const std::string& url,
@@ -290,47 +335,21 @@ inline HttpCamera::HttpCamera(const wpi::Twine& name, const std::string& url,
 
 inline HttpCamera::HttpCamera(const wpi::Twine& name,
                               wpi::ArrayRef<std::string> urls,
-                              HttpCameraKind kind) {
-  m_handle = CreateHttpCamera(
-      name, urls, static_cast<CS_HttpCameraKind>(static_cast<int>(kind)),
-      &m_status);
+                              HttpCameraKind kind)
+    : NetworkSource(name, urls) {
+  GetProperty("http_kind").Set(kind);
 }
 
 template <typename T>
 inline HttpCamera::HttpCamera(const wpi::Twine& name,
                               std::initializer_list<T> urls,
-                              HttpCameraKind kind) {
-  std::vector<std::string> vec;
-  vec.reserve(urls.size());
-  for (const auto& url : urls) vec.emplace_back(url);
-  m_handle = CreateHttpCamera(
-      name, vec, static_cast<CS_HttpCameraKind>(static_cast<int>(kind)),
-      &m_status);
+                              HttpCameraKind kind)
+    : NetworkSource(name, urls) {
+  GetProperty("http_kind").Set(kind);
 }
 
 inline HttpCamera::HttpCameraKind HttpCamera::GetHttpCameraKind() const {
-  m_status = 0;
-  return static_cast<HttpCameraKind>(
-      static_cast<int>(::cs::GetHttpCameraKind(m_handle, &m_status)));
-}
-
-inline void HttpCamera::SetUrls(wpi::ArrayRef<std::string> urls) {
-  m_status = 0;
-  ::cs::SetHttpCameraUrls(m_handle, urls, &m_status);
-}
-
-template <typename T>
-inline void HttpCamera::SetUrls(std::initializer_list<T> urls) {
-  std::vector<std::string> vec;
-  vec.reserve(urls.size());
-  for (const auto& url : urls) vec.emplace_back(url);
-  m_status = 0;
-  ::cs::SetHttpCameraUrls(m_handle, vec, &m_status);
-}
-
-inline std::vector<std::string> HttpCamera::GetUrls() const {
-  m_status = 0;
-  return ::cs::GetHttpCameraUrls(m_handle, &m_status);
+  return static_cast<HttpCameraKind>(GetProperty("http_kind").Get());
 }
 
 inline std::string AxisCamera::HostToUrl(const wpi::Twine& host) {

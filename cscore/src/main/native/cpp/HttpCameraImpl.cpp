@@ -20,9 +20,8 @@
 
 using namespace cs;
 
-HttpCameraImpl::HttpCameraImpl(const wpi::Twine& name, CS_HttpCameraKind kind,
-                               wpi::Logger& logger)
-    : SourceImpl{name, logger}, m_kind{kind} {}
+HttpCameraImpl::HttpCameraImpl(const wpi::Twine& name, wpi::Logger& logger)
+    : SourceImpl{name, logger} {}
 
 HttpCameraImpl::~HttpCameraImpl() {
   m_active = false;
@@ -413,11 +412,35 @@ bool HttpCameraImpl::CacheProperties(CS_Status* status) const {
   std::scoped_lock lock(m_mutex);
 #endif
 
-  // Pretty typical set of video modes
-  m_videoModes.clear();
-  m_videoModes.emplace_back(VideoMode::kMJPEG, 640, 480, 30);
-  m_videoModes.emplace_back(VideoMode::kMJPEG, 320, 240, 30);
-  m_videoModes.emplace_back(VideoMode::kMJPEG, 160, 120, 30);
+  if (m_kind == CS_HTTP_AXIS) {
+    CreateProperty("brightness", "ImageSource.I0.Sensor.Brightness", true,
+                   CS_PROP_INTEGER, 0, 100, 1, 50, 50);
+    CreateEnumProperty("white_balance", "ImageSource.I0.Sensor.WhiteBalance",
+                       true, 0, 0,
+                       {"auto", "hold", "fixed_outdoor1", "fixed_outdoor2",
+                        "fixed_indoor", "fixed_fluor1", "fixed_fluor2"});
+    CreateProperty("color_level", "ImageSource.I0.Sensor.ColorLevel", true,
+                   CS_PROP_INTEGER, 0, 100, 1, 50, 50);
+    CreateEnumProperty("exposure", "ImageSource.I0.Sensor.Exposure", true, 0, 0,
+                       {"auto", "hold", "flickerfree50", "flickerfree60"});
+    CreateProperty("exposure_priority",
+                   "ImageSource.I0.Sensor.ExposurePriority", true,
+                   CS_PROP_INTEGER, 0, 100, 1, 50, 50);
+
+    // TODO: get video modes from device
+    m_videoModes.emplace_back(VideoMode::kMJPEG, 640, 480, 30);
+    m_videoModes.emplace_back(VideoMode::kMJPEG, 480, 360, 30);
+    m_videoModes.emplace_back(VideoMode::kMJPEG, 320, 240, 30);
+    m_videoModes.emplace_back(VideoMode::kMJPEG, 240, 180, 30);
+    m_videoModes.emplace_back(VideoMode::kMJPEG, 176, 144, 30);
+    m_videoModes.emplace_back(VideoMode::kMJPEG, 160, 120, 30);
+  } else {
+    // Pretty typical set of video modes
+    m_videoModes.clear();
+    m_videoModes.emplace_back(VideoMode::kMJPEG, 640, 480, 30);
+    m_videoModes.emplace_back(VideoMode::kMJPEG, 320, 240, 30);
+    m_videoModes.emplace_back(VideoMode::kMJPEG, 160, 120, 30);
+  }
 
   m_properties_cached = true;
   return true;
@@ -481,92 +504,47 @@ void HttpCameraImpl::NumSinksEnabledChanged() {
   m_sinkEnabledCond.notify_one();
 }
 
-bool AxisCameraImpl::CacheProperties(CS_Status* status) const {
-  CreateProperty("brightness", "ImageSource.I0.Sensor.Brightness", true,
-                 CS_PROP_INTEGER, 0, 100, 1, 50, 50);
-  CreateEnumProperty("white_balance", "ImageSource.I0.Sensor.WhiteBalance",
-                     true, 0, 0,
-                     {"auto", "hold", "fixed_outdoor1", "fixed_outdoor2",
-                      "fixed_indoor", "fixed_fluor1", "fixed_fluor2"});
-  CreateProperty("color_level", "ImageSource.I0.Sensor.ColorLevel", true,
-                 CS_PROP_INTEGER, 0, 100, 1, 50, 50);
-  CreateEnumProperty("exposure", "ImageSource.I0.Sensor.Exposure", true, 0, 0,
-                     {"auto", "hold", "flickerfree50", "flickerfree60"});
-  CreateProperty("exposure_priority", "ImageSource.I0.Sensor.ExposurePriority",
-                 true, CS_PROP_INTEGER, 0, 100, 1, 50, 50);
-
-  // TODO: get video modes from device
-  std::scoped_lock lock(m_mutex);
-  m_videoModes.clear();
-  m_videoModes.emplace_back(VideoMode::kMJPEG, 640, 480, 30);
-  m_videoModes.emplace_back(VideoMode::kMJPEG, 480, 360, 30);
-  m_videoModes.emplace_back(VideoMode::kMJPEG, 320, 240, 30);
-  m_videoModes.emplace_back(VideoMode::kMJPEG, 240, 180, 30);
-  m_videoModes.emplace_back(VideoMode::kMJPEG, 176, 144, 30);
-  m_videoModes.emplace_back(VideoMode::kMJPEG, 160, 120, 30);
-
-  m_properties_cached = true;
-  return true;
-}
-
 namespace cs {
 
-CS_Source CreateHttpCamera(const wpi::Twine& name, const wpi::Twine& url,
-                           CS_HttpCameraKind kind, CS_Status* status) {
+CS_Source CreateNetworkSource(const wpi::Twine& name, const wpi::Twine& url,
+                              CS_Status* status) {
   auto& inst = Instance::GetInstance();
-  std::shared_ptr<HttpCameraImpl> source;
-  switch (kind) {
-    case CS_HTTP_AXIS:
-      source = std::make_shared<AxisCameraImpl>(name, inst.GetLogger());
-      break;
-    default:
-      source = std::make_shared<HttpCameraImpl>(name, kind, inst.GetLogger());
-      break;
-  }
+  auto source = std::make_shared<HttpCameraImpl>(name, inst.GetLogger());
   if (!source->SetUrls(url.str(), status)) return 0;
-  return inst.CreateSource(CS_SOURCE_HTTP, source);
+  return inst.CreateSource(CS_SOURCE_NETWORK, source);
 }
 
-CS_Source CreateHttpCamera(const wpi::Twine& name,
-                           wpi::ArrayRef<std::string> urls,
-                           CS_HttpCameraKind kind, CS_Status* status) {
+CS_Source CreateNetworkSource(const wpi::Twine& name,
+                              wpi::ArrayRef<std::string> urls,
+                              CS_Status* status) {
   auto& inst = Instance::GetInstance();
   if (urls.empty()) {
     *status = CS_EMPTY_VALUE;
     return 0;
   }
-  auto source = std::make_shared<HttpCameraImpl>(name, kind, inst.GetLogger());
+  auto source = std::make_shared<HttpCameraImpl>(name, inst.GetLogger());
   if (!source->SetUrls(urls, status)) return 0;
-  return inst.CreateSource(CS_SOURCE_HTTP, source);
+  return inst.CreateSource(CS_SOURCE_NETWORK, source);
 }
 
-CS_HttpCameraKind GetHttpCameraKind(CS_Source source, CS_Status* status) {
-  auto data = Instance::GetInstance().GetSource(source);
-  if (!data || data->kind != CS_SOURCE_HTTP) {
-    *status = CS_INVALID_HANDLE;
-    return CS_HTTP_UNKNOWN;
-  }
-  return static_cast<HttpCameraImpl&>(*data->source).GetKind();
-}
-
-void SetHttpCameraUrls(CS_Source source, wpi::ArrayRef<std::string> urls,
-                       CS_Status* status) {
+void SetNetworkSourceUrls(CS_Source source, wpi::ArrayRef<std::string> urls,
+                          CS_Status* status) {
   if (urls.empty()) {
     *status = CS_EMPTY_VALUE;
     return;
   }
   auto data = Instance::GetInstance().GetSource(source);
-  if (!data || data->kind != CS_SOURCE_HTTP) {
+  if (!data || data->kind != CS_SOURCE_NETWORK) {
     *status = CS_INVALID_HANDLE;
     return;
   }
   static_cast<HttpCameraImpl&>(*data->source).SetUrls(urls, status);
 }
 
-std::vector<std::string> GetHttpCameraUrls(CS_Source source,
-                                           CS_Status* status) {
+std::vector<std::string> GetNetworkSourceUrls(CS_Source source,
+                                              CS_Status* status) {
   auto data = Instance::GetInstance().GetSource(source);
-  if (!data || data->kind != CS_SOURCE_HTTP) {
+  if (!data || data->kind != CS_SOURCE_NETWORK) {
     *status = CS_INVALID_HANDLE;
     return std::vector<std::string>{};
   }
@@ -577,34 +555,30 @@ std::vector<std::string> GetHttpCameraUrls(CS_Source source,
 
 extern "C" {
 
-CS_Source CS_CreateHttpCamera(const char* name, const char* url,
-                              CS_HttpCameraKind kind, CS_Status* status) {
-  return cs::CreateHttpCamera(name, url, kind, status);
+CS_Source CS_CreateNetworkSource(const char* name, const char* url,
+                                 CS_Status* status) {
+  return cs::CreateNetworkSource(name, url, status);
 }
 
-CS_Source CS_CreateHttpCameraMulti(const char* name, const char** urls,
-                                   int count, CS_HttpCameraKind kind,
-                                   CS_Status* status) {
+CS_Source CS_CreateNetworkSourceMulti(const char* name, const char** urls,
+                                      int count, CS_Status* status) {
   wpi::SmallVector<std::string, 4> vec;
   vec.reserve(count);
   for (int i = 0; i < count; ++i) vec.push_back(urls[i]);
-  return cs::CreateHttpCamera(name, vec, kind, status);
+  return cs::CreateNetworkSource(name, vec, status);
 }
 
-CS_HttpCameraKind CS_GetHttpCameraKind(CS_Source source, CS_Status* status) {
-  return cs::GetHttpCameraKind(source, status);
-}
-
-void CS_SetHttpCameraUrls(CS_Source source, const char** urls, int count,
-                          CS_Status* status) {
+void CS_SetNetworkSourceUrls(CS_Source source, const char** urls, int count,
+                             CS_Status* status) {
   wpi::SmallVector<std::string, 4> vec;
   vec.reserve(count);
   for (int i = 0; i < count; ++i) vec.push_back(urls[i]);
-  cs::SetHttpCameraUrls(source, vec, status);
+  cs::SetNetworkSourceUrls(source, vec, status);
 }
 
-char** CS_GetHttpCameraUrls(CS_Source source, int* count, CS_Status* status) {
-  auto urls = cs::GetHttpCameraUrls(source, status);
+char** CS_GetNetworkSourceUrls(CS_Source source, int* count,
+                               CS_Status* status) {
+  auto urls = cs::GetNetworkSourceUrls(source, status);
   char** out =
       static_cast<char**>(wpi::safe_malloc(urls.size() * sizeof(char*)));
   *count = urls.size();
@@ -612,7 +586,7 @@ char** CS_GetHttpCameraUrls(CS_Source source, int* count, CS_Status* status) {
   return out;
 }
 
-void CS_FreeHttpCameraUrls(char** urls, int count) {
+void CS_FreeNetworkSourceUrls(char** urls, int count) {
   if (!urls) return;
   for (int i = 0; i < count; ++i) std::free(urls[i]);
   std::free(urls);

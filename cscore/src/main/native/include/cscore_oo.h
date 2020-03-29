@@ -212,7 +212,7 @@ class VideoSource : public VideoNode {
   enum Kind {
     kUnknown = CS_SOURCE_UNKNOWN,
     kUsb = CS_SOURCE_USB,
-    kHttp = CS_SOURCE_HTTP,
+    kHttp = CS_SOURCE_NETWORK,
     kImage = CS_SOURCE_IMAGE
   };
 
@@ -480,9 +480,72 @@ class UsbCamera : public VideoCamera {
 };
 
 /**
+ * A source that represents a network video stream.
+ */
+class NetworkSource : public VideoCamera {
+ public:
+  /**
+   * Create a source for a network video stream.
+   *
+   * @param name Source name (arbitrary unique identifier)
+   * @param url Camera URL (e.g. "http://10.x.y.11/video/stream.mjpg")
+   */
+  NetworkSource(const wpi::Twine& name, const wpi::Twine& url);
+
+  /**
+   * Create a source for a network video stream.
+   *
+   * @param name Source name (arbitrary unique identifier)
+   * @param url Camera URL (e.g. "http://10.x.y.11/video/stream.mjpg")
+   */
+  NetworkSource(const wpi::Twine& name, const char* url);
+
+  /**
+   * Create a source for a network video stream.
+   *
+   * @param name Source name (arbitrary unique identifier)
+   * @param url Camera URL (e.g. "http://10.x.y.11/video/stream.mjpg")
+   */
+  NetworkSource(const wpi::Twine& name, const std::string& url);
+
+  /**
+   * Create a source for a network video stream.
+   *
+   * @param name Source name (arbitrary unique identifier)
+   * @param urls Array of Camera URLs
+   */
+  NetworkSource(const wpi::Twine& name, wpi::ArrayRef<std::string> urls);
+
+  /**
+   * Create a source for a network video stream.
+   *
+   * @param name Source name (arbitrary unique identifier)
+   * @param urls Array of Camera URLs
+   */
+  template <typename T>
+  NetworkSource(const wpi::Twine& name, std::initializer_list<T> urls);
+
+  /**
+   * Change the URLs used to connect to the camera.
+   */
+  void SetUrls(wpi::ArrayRef<std::string> urls);
+
+  /**
+   * Change the URLs used to connect to the camera.
+   */
+  template <typename T>
+  void SetUrls(std::initializer_list<T> urls);
+
+  /**
+   * Get the URLs used to connect to the camera.
+   */
+  std::vector<std::string> GetUrls() const;
+};
+
+/**
  * A source that represents a MJPEG-over-HTTP (IP) camera.
  */
-class HttpCamera : public VideoCamera {
+class HttpCamera : public NetworkSource {
  public:
   enum HttpCameraKind {
     kUnknown = CS_HTTP_UNKNOWN,
@@ -549,22 +612,6 @@ class HttpCamera : public VideoCamera {
    * was created with.
    */
   HttpCameraKind GetHttpCameraKind() const;
-
-  /**
-   * Change the URLs used to connect to the camera.
-   */
-  void SetUrls(wpi::ArrayRef<std::string> urls);
-
-  /**
-   * Change the URLs used to connect to the camera.
-   */
-  template <typename T>
-  void SetUrls(std::initializer_list<T> urls);
-
-  /**
-   * Get the URLs used to connect to the camera.
-   */
-  std::vector<std::string> GetUrls() const;
 };
 
 /**
