@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------------*/
-/* Copyright (c) 2016-2019 FIRST. All Rights Reserved.                        */
+/* Copyright (c) 2016-2020 FIRST. All Rights Reserved.                        */
 /* Open Source Software - may be modified and shared by FRC teams. The code   */
 /* must be accompanied by the FIRST BSD license file in the root directory of */
 /* the project.                                                               */
@@ -11,20 +11,15 @@
 
 using namespace cs;
 
-wpi::json VideoSource::GetConfigJsonObject() const {
+wpi::json VideoNode::GetConfigJsonObject() const {
   m_status = 0;
-  return GetSourceConfigJsonObject(m_handle, &m_status);
+  return GetNodeConfigJsonObject(m_handle, &m_status);
 }
 
-wpi::json VideoSink::GetConfigJsonObject() const {
-  m_status = 0;
-  return GetSinkConfigJsonObject(m_handle, &m_status);
-}
-
-std::vector<VideoProperty> VideoSource::EnumerateProperties() const {
+std::vector<VideoProperty> VideoNode::EnumerateProperties() const {
   wpi::SmallVector<CS_Property, 32> handles_buf;
-  CS_Status status = 0;
-  auto handles = EnumerateSourceProperties(m_handle, handles_buf, &status);
+  m_status = 0;
+  auto handles = EnumerateNodeProperties(m_handle, handles_buf, &m_status);
 
   std::vector<VideoProperty> properties;
   properties.reserve(handles.size());
@@ -35,8 +30,8 @@ std::vector<VideoProperty> VideoSource::EnumerateProperties() const {
 
 std::vector<VideoSink> VideoSource::EnumerateSinks() {
   wpi::SmallVector<CS_Sink, 16> handles_buf;
-  CS_Status status = 0;
-  auto handles = EnumerateSourceSinks(m_handle, handles_buf, &status);
+  m_status = 0;
+  auto handles = EnumerateSourceSinks(m_handle, handles_buf, &m_status);
 
   std::vector<VideoSink> sinks;
   sinks.reserve(handles.size());
@@ -53,18 +48,6 @@ std::vector<VideoSource> VideoSource::EnumerateSources() {
   sources.reserve(handles.size());
   for (int handle : handles) sources.emplace_back(VideoSource{handle});
   return sources;
-}
-
-std::vector<VideoProperty> VideoSink::EnumerateProperties() const {
-  wpi::SmallVector<CS_Property, 32> handles_buf;
-  CS_Status status = 0;
-  auto handles = EnumerateSinkProperties(m_handle, handles_buf, &status);
-
-  std::vector<VideoProperty> properties;
-  properties.reserve(handles.size());
-  for (CS_Property handle : handles)
-    properties.emplace_back(VideoProperty{handle});
-  return properties;
 }
 
 std::vector<VideoSink> VideoSink::EnumerateSinks() {

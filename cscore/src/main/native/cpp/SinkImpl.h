@@ -43,6 +43,7 @@ class SinkImpl : public PropertyContainer {
   void Enable();
   void Disable();
   void SetEnabled(bool enable);
+  bool IsEnabled() const { return m_enabledCount > 0; }
 
   void SetSource(std::shared_ptr<SourceImpl> source);
 
@@ -56,10 +57,9 @@ class SinkImpl : public PropertyContainer {
   std::string GetError() const;
   wpi::StringRef GetError(wpi::SmallVectorImpl<char>& buf) const;
 
-  bool SetConfigJson(wpi::StringRef config, CS_Status* status);
-  virtual bool SetConfigJson(const wpi::json& config, CS_Status* status);
-  std::string GetConfigJson(CS_Status* status);
-  virtual wpi::json GetConfigJsonObject(CS_Status* status);
+  bool SetConfigJson(wpi::StringRef config, CS_Status* status) override;
+  bool SetConfigJsonObject(const wpi::json& config, CS_Status* status) override;
+  wpi::json GetConfigJsonObject(CS_Status* status) override;
 
   wpi::sig::Signal<> enabled;
   wpi::sig::Signal<> disabled;

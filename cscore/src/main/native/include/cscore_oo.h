@@ -30,6 +30,7 @@ namespace cs {
 // Forward declarations so friend declarations work correctly
 class ImageSource;
 class VideoEvent;
+class VideoNode;
 class VideoSink;
 class VideoSource;
 
@@ -39,6 +40,7 @@ class VideoSource;
 class VideoProperty {
   friend class ImageSource;
   friend class VideoEvent;
+  friend class VideoNode;
   friend class VideoSink;
   friend class VideoSource;
 
@@ -92,9 +94,117 @@ class VideoProperty {
 };
 
 /**
+ * Base class for nodes.
+ */
+class VideoNode {
+ public:
+  VideoNode() noexcept : m_handle(0) {}
+  VideoNode(const VideoNode& node);
+  VideoNode(VideoNode&& other) noexcept;
+  VideoNode& operator=(VideoNode other) noexcept;
+  ~VideoNode();
+
+  explicit operator bool() const { return m_handle != 0; }
+
+  int GetHandle() const { return m_handle; }
+
+  bool operator==(const VideoNode& other) const {
+    return m_handle == other.m_handle;
+  }
+
+  bool operator!=(const VideoNode& other) const { return !(*this == other); }
+
+  /**
+   * Gets enable status.  On sources, this is determined with a combination of
+   * connection strategy and the number of sinks connected.
+   *
+   * @return True if enabled, false otherwise.
+   */
+  bool IsEnabled() const;
+
+  /**
+   * Set settings and properties from a JSON configuration string.
+   *
+   * The format of the JSON input for sources is:
+   *
+   * <pre>
+   * {
+   *     "pixel format": "MJPEG", "YUYV", etc
+   *     "width": video mode width
+   *     "height": video mode height
+   *     "fps": video mode fps
+   *     "brightness": percentage brightness
+   *     "white balance": "auto", "hold", or value
+   *     "exposure": "auto", "hold", or value
+   *     "properties": [
+   *         {
+   *             "name": property name
+   *             "value": property value
+   *         }
+   *     ]
+   * }
+   * </pre>
+   *
+   * @param config configuration
+   * @return True if set successfully
+   */
+  bool SetConfigJson(wpi::StringRef config);
+
+  /**
+   * Set settings and properties from a JSON configuration object.
+   *
+   * @param config configuration
+   * @return True if set successfully
+   */
+  bool SetConfigJson(const wpi::json& config);
+
+  /**
+   * Get a JSON configuration string.
+   *
+   * @return JSON configuration string
+   */
+  std::string GetConfigJson() const;
+
+  /**
+   * Get a JSON configuration object.
+   *
+   * @return JSON configuration object
+   */
+  wpi::json GetConfigJsonObject() const;
+
+  /**
+   * Get a property.
+   *
+   * @param name Property name
+   * @return Property contents (of kind Property::kNone if no property with
+   *         the given name exists)
+   */
+  VideoProperty GetProperty(const wpi::Twine& name) const;
+
+  /**
+   * Enumerate all properties.
+   */
+  std::vector<VideoProperty> EnumerateProperties() const;
+
+  CS_Status GetLastStatus() const { return m_status; }
+
+  friend void swap(VideoNode& first, VideoNode& second) noexcept {
+    using std::swap;
+    swap(first.m_status, second.m_status);
+    swap(first.m_handle, second.m_handle);
+  }
+
+ protected:
+  explicit VideoNode(CS_Handle handle) : m_handle(handle) {}
+
+  mutable CS_Status m_status = 0;
+  CS_Handle m_handle;
+};
+
+/**
  * A source for video that provides a sequence of frames.
  */
-class VideoSource {
+class VideoSource : public VideoNode {
   friend class VideoEvent;
   friend class VideoSink;
 
@@ -127,21 +237,10 @@ class VideoSource {
     kConnectionForceClose = CS_CONNECTION_FORCE_CLOSE
   };
 
-  VideoSource() noexcept : m_handle(0) {}
-  VideoSource(const VideoSource& source);
-  VideoSource(VideoSource&& other) noexcept;
-  VideoSource& operator=(VideoSource other) noexcept;
-  ~VideoSource();
-
-  explicit operator bool() const { return m_handle != 0; }
-
-  int GetHandle() const { return m_handle; }
-
-  bool operator==(const VideoSource& other) const {
-    return m_handle == other.m_handle;
-  }
-
-  bool operator!=(const VideoSource& other) const { return !(*this == other); }
+  VideoSource() = default;
+  VideoSource(const VideoSource& source) = default;
+  VideoSource(VideoSource&& other) = default;
+  VideoSource& operator=(const VideoSource& other) = default;
 
   /**
    * Get the kind of the source.
@@ -182,27 +281,6 @@ class VideoSource {
    * Is the source currently connected to whatever is providing the images?
    */
   bool IsConnected() const;
-
-  /**
-   * Gets source enable status.  This is determined with a combination of
-   * connection strategy and the number of sinks connected.
-   *
-   * @return True if enabled, false otherwise.
-   */
-  bool IsEnabled() const;
-
-  /** Get a property.
-   *
-   * @param name Property name
-   * @return Property contents (of kind Property::kNone if no property with
-   *         the given name exists)
-   */
-  VideoProperty GetProperty(const wpi::Twine& name);
-
-  /**
-   * Enumerate all properties of this source.
-   */
-  std::vector<VideoProperty> EnumerateProperties() const;
 
   /**
    * Get the current video mode.
@@ -254,56 +332,6 @@ class VideoSource {
   bool SetFPS(int fps);
 
   /**
-   * Set video mode and properties from a JSON configuration string.
-   *
-   * The format of the JSON input is:
-   *
-   * <pre>
-   * {
-   *     "pixel format": "MJPEG", "YUYV", etc
-   *     "width": video mode width
-   *     "height": video mode height
-   *     "fps": video mode fps
-   *     "brightness": percentage brightness
-   *     "white balance": "auto", "hold", or value
-   *     "exposure": "auto", "hold", or value
-   *     "properties": [
-   *         {
-   *             "name": property name
-   *             "value": property value
-   *         }
-   *     ]
-   * }
-   * </pre>
-   *
-   * @param config configuration
-   * @return True if set successfully
-   */
-  bool SetConfigJson(wpi::StringRef config);
-
-  /**
-   * Set video mode and properties from a JSON configuration object.
-   *
-   * @param config configuration
-   * @return True if set successfully
-   */
-  bool SetConfigJson(const wpi::json& config);
-
-  /**
-   * Get a JSON configuration string.
-   *
-   * @return JSON configuration string
-   */
-  std::string GetConfigJson() const;
-
-  /**
-   * Get a JSON configuration object.
-   *
-   * @return JSON configuration object
-   */
-  wpi::json GetConfigJsonObject() const;
-
-  /**
    * Get the actual FPS.
    *
    * <p>SetTelemetryPeriod() must be called for this to be valid.
@@ -326,8 +354,6 @@ class VideoSource {
    */
   std::vector<VideoMode> EnumerateVideoModes() const;
 
-  CS_Status GetLastStatus() const { return m_status; }
-
   /**
    * Enumerate all sinks connected to this source.
    *
@@ -342,17 +368,8 @@ class VideoSource {
    */
   static std::vector<VideoSource> EnumerateSources();
 
-  friend void swap(VideoSource& first, VideoSource& second) noexcept {
-    using std::swap;
-    swap(first.m_status, second.m_status);
-    swap(first.m_handle, second.m_handle);
-  }
-
  protected:
-  explicit VideoSource(CS_Source handle) : m_handle(handle) {}
-
-  mutable CS_Status m_status = 0;
-  CS_Source m_handle;
+  explicit VideoSource(CS_Source handle) : VideoNode(handle) {}
 };
 
 /**
@@ -720,7 +737,7 @@ class ImageSource : public VideoSource {
 /**
  * A sink for video that accepts a sequence of frames.
  */
-class VideoSink {
+class VideoSink : public VideoNode {
   friend class VideoEvent;
   friend class VideoSource;
 
@@ -731,21 +748,10 @@ class VideoSink {
     kImage = CS_SINK_IMAGE
   };
 
-  VideoSink() noexcept : m_handle(0) {}
-  VideoSink(const VideoSink& sink);
-  VideoSink(VideoSink&& sink) noexcept;
-  VideoSink& operator=(VideoSink other) noexcept;
-  ~VideoSink();
-
-  explicit operator bool() const { return m_handle != 0; }
-
-  int GetHandle() const { return m_handle; }
-
-  bool operator==(const VideoSink& other) const {
-    return m_handle == other.m_handle;
-  }
-
-  bool operator!=(const VideoSink& other) const { return !(*this == other); }
+  VideoSink() = default;
+  VideoSink(const VideoSink& sink) = default;
+  VideoSink(VideoSink&& sink) = default;
+  VideoSink& operator=(const VideoSink& other) = default;
 
   /**
    * Get the kind of the sink.
@@ -762,63 +768,6 @@ class VideoSink {
    * Get the sink description.  This is sink-kind specific.
    */
   std::string GetDescription() const;
-
-  /**
-   * Get a property of the sink.
-   *
-   * @param name Property name
-   * @return Property (kind Property::kNone if no property with
-   *         the given name exists)
-   */
-  VideoProperty GetProperty(const wpi::Twine& name);
-
-  /**
-   * Enumerate all properties of this sink.
-   */
-  std::vector<VideoProperty> EnumerateProperties() const;
-
-  /**
-   * Set properties from a JSON configuration string.
-   *
-   * The format of the JSON input is:
-   *
-   * <pre>
-   * {
-   *     "properties": [
-   *         {
-   *             "name": property name
-   *             "value": property value
-   *         }
-   *     ]
-   * }
-   * </pre>
-   *
-   * @param config configuration
-   * @return True if set successfully
-   */
-  bool SetConfigJson(wpi::StringRef config);
-
-  /**
-   * Set properties from a JSON configuration object.
-   *
-   * @param config configuration
-   * @return True if set successfully
-   */
-  bool SetConfigJson(const wpi::json& config);
-
-  /**
-   * Get a JSON configuration string.
-   *
-   * @return JSON configuration string
-   */
-  std::string GetConfigJson() const;
-
-  /**
-   * Get a JSON configuration object.
-   *
-   * @return JSON configuration object
-   */
-  wpi::json GetConfigJsonObject() const;
 
   /**
    * Configure which source should provide frames to this sink.  Each sink
@@ -845,8 +794,6 @@ class VideoSink {
    */
   VideoProperty GetSourceProperty(const wpi::Twine& name);
 
-  CS_Status GetLastStatus() const { return m_status; }
-
   /**
    * Enumerate all existing sinks.
    *
@@ -854,17 +801,8 @@ class VideoSink {
    */
   static std::vector<VideoSink> EnumerateSinks();
 
-  friend void swap(VideoSink& first, VideoSink& second) noexcept {
-    using std::swap;
-    swap(first.m_status, second.m_status);
-    swap(first.m_handle, second.m_handle);
-  }
-
  protected:
-  explicit VideoSink(CS_Sink handle) : m_handle(handle) {}
-
-  mutable CS_Status m_status = 0;
-  CS_Sink m_handle;
+  explicit VideoSink(CS_Sink handle) : VideoNode(handle) {}
 };
 
 /**
@@ -890,7 +828,7 @@ class MjpegServer : public VideoSink {
    * @param name Sink name (arbitrary unique identifier)
    * @param port TCP port number
    */
-  MjpegServer(const wpi::Twine& name, int port) : MjpegServer(name, "", port) {}
+  MjpegServer(const wpi::Twine& name, int port);
 
   /**
    * Get the listen address of the server.

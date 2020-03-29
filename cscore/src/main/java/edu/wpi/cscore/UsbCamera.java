@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------------*/
-/* Copyright (c) 2016-2018 FIRST. All Rights Reserved.                        */
+/* Copyright (c) 2016-2020 FIRST. All Rights Reserved.                        */
 /* Open Source Software - may be modified and shared by FRC teams. The code   */
 /* must be accompanied by the FIRST BSD license file in the root directory of */
 /* the project.                                                               */
@@ -60,7 +60,7 @@ public class UsbCamera extends VideoCamera {
    * @param level 0=don't display Connecting message, 1=do display message
    */
   public void setConnectVerbose(int level) {
-    CameraServerJNI.setProperty(CameraServerJNI.getSourceProperty(m_handle, "connect_verbose"),
+    CameraServerJNI.setProperty(CameraServerJNI.getNodeProperty(m_handle, "connect_verbose"),
                                 level);
   }
 }

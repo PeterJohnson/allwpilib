@@ -128,10 +128,11 @@ bool SourceImpl::SetConfigJson(wpi::StringRef config, CS_Status* status) {
     *status = CS_PROPERTY_WRITE_FAILED;
     return false;
   }
-  return SetConfigJson(j, status);
+  return SetConfigJsonObject(j, status);
 }
 
-bool SourceImpl::SetConfigJson(const wpi::json& config, CS_Status* status) {
+bool SourceImpl::SetConfigJsonObject(const wpi::json& config,
+                                     CS_Status* status) {
   VideoMode mode;
 
   // pixel format
@@ -279,14 +280,6 @@ bool SourceImpl::SetConfigJson(const wpi::json& config, CS_Status* status) {
     SetPropertiesJson(config.at("properties"), m_logger, GetName(), status);
 
   return true;
-}
-
-std::string SourceImpl::GetConfigJson(CS_Status* status) {
-  std::string rv;
-  wpi::raw_string_ostream os(rv);
-  GetConfigJsonObject(status).dump(os, 4);
-  os.flush();
-  return rv;
 }
 
 wpi::json SourceImpl::GetConfigJsonObject(CS_Status* status) {

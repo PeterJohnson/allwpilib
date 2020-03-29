@@ -12,7 +12,7 @@ package edu.wpi.cscore;
  * consist of multiple images (e.g. from a stereo or depth camera); these
  * are called channels.
  */
-public class VideoSink implements AutoCloseable {
+public class VideoSink extends VideoNode {
   public enum Kind {
     kUnknown(0), kMjpeg(2), kImage(4);
 
@@ -43,43 +43,7 @@ public class VideoSink implements AutoCloseable {
   }
 
   protected VideoSink(int handle) {
-    m_handle = handle;
-  }
-
-  @Override
-  public synchronized void close() {
-    if (m_handle != 0) {
-      CameraServerJNI.releaseSink(m_handle);
-    }
-    m_handle = 0;
-  }
-
-  public boolean isValid() {
-    return m_handle != 0;
-  }
-
-  public int getHandle() {
-    return m_handle;
-  }
-
-  @Override
-  public boolean equals(Object other) {
-    if (this == other) {
-      return true;
-    }
-    if (other == null) {
-      return false;
-    }
-    if (getClass() != other.getClass()) {
-      return false;
-    }
-    VideoSink sink = (VideoSink) other;
-    return m_handle == sink.m_handle;
-  }
-
-  @Override
-  public int hashCode() {
-    return m_handle;
+    super(handle);
   }
 
   /**
@@ -102,62 +66,6 @@ public class VideoSink implements AutoCloseable {
    */
   public String getDescription() {
     return CameraServerJNI.getSinkDescription(m_handle);
-  }
-
-  /**
-   * Get a property of the sink.
-   *
-   * @param name Property name
-   * @return Property (kind Property::kNone if no property with
-   *         the given name exists)
-   */
-  public VideoProperty getProperty(String name) {
-    return new VideoProperty(CameraServerJNI.getSinkProperty(m_handle, name));
-  }
-
-  /**
-   * Enumerate all properties of this sink.
-   */
-  @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
-  public VideoProperty[] enumerateProperties() {
-    int[] handles = CameraServerJNI.enumerateSinkProperties(m_handle);
-    VideoProperty[] rv = new VideoProperty[handles.length];
-    for (int i = 0; i < handles.length; i++) {
-      rv[i] = new VideoProperty(handles[i]);
-    }
-    return rv;
-  }
-
-  /**
-   * Set properties from a JSON configuration string.
-   *
-   * <p>The format of the JSON input is:
-   *
-   * <pre>
-   * {
-   *     "properties": [
-   *         {
-   *             "name": property name
-   *             "value": property value
-   *         }
-   *     ]
-   * }
-   * </pre>
-   *
-   * @param config configuration
-   * @return True if set successfully
-   */
-  public boolean setConfigJson(String config) {
-    return CameraServerJNI.setSinkConfigJson(m_handle, config);
-  }
-
-  /**
-   * Get a JSON configuration string.
-   *
-   * @return JSON configuration string
-   */
-  public String getConfigJson() {
-    return CameraServerJNI.getSinkConfigJson(m_handle);
   }
 
   /**
@@ -212,6 +120,4 @@ public class VideoSink implements AutoCloseable {
     }
     return rv;
   }
-
-  protected int m_handle;
 }
