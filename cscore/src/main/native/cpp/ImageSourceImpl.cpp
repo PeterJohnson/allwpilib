@@ -168,8 +168,8 @@ CS_Source CreateImageSource(const wpi::Twine& name, const VideoMode& mode,
                             CS_Status* status) {
   auto& inst = Instance::GetInstance();
   return inst.CreateSource(
-      CS_SOURCE_IMAGE, std::make_shared<ImageSourceImpl>(name, inst.logger,
-                                                         inst.notifier, mode));
+      CS_SOURCE_IMAGE, std::make_shared<ImageSourceImpl>(
+                           name, inst.GetLogger(), inst.GetNotifier(), mode));
 }
 
 void PutSourceFrame(CS_Source source, cv::Mat& image, CS_Status* status) {
