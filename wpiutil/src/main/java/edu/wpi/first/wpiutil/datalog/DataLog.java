@@ -69,9 +69,10 @@ package edu.wpi.first.wpiutil.datalog;
  */
 @SuppressWarnings({"PMD.TooManyMethods", "PMD.ExcessivePublicCount"})
 public class DataLog {
-  private final long m_impl;
+  protected final long m_impl;
 
-  private DataLog(long impl) {
+  //explicitly package-private so inheritors can call it
+  DataLog(long impl) {
     m_impl = impl;
   }
 
@@ -110,7 +111,7 @@ public class DataLog {
    */
   public static DataLog openBoolean(String filename, CreationDisposition disp,
                                     DataLogConfig config) {
-    return new DataLog(DataLogJNI.openBoolean(filename, disp.m_id, config));
+    return new BooleanLog(DataLogJNI.openBoolean(filename, disp.m_id, config));
   }
 
   /**
@@ -123,7 +124,7 @@ public class DataLog {
    */
   public static DataLog openDouble(String filename, CreationDisposition disp,
                                    DataLogConfig config) {
-    return new DataLog(DataLogJNI.openDouble(filename, disp.m_id, config));
+    return new DoubleLog(DataLogJNI.openDouble(filename, disp.m_id, config));
   }
 
   /**
@@ -136,7 +137,7 @@ public class DataLog {
    */
   public static DataLog openString(String filename, CreationDisposition disp,
                                    DataLogConfig config) {
-    return new DataLog(DataLogJNI.openString(filename, disp.m_id, config));
+    return new StringLog(DataLogJNI.openString(filename, disp.m_id, config));
   }
 
   /**
@@ -149,7 +150,7 @@ public class DataLog {
    */
   public static DataLog openBooleanArray(String filename, CreationDisposition disp,
                                          DataLogConfig config) {
-    return new DataLog(DataLogJNI.openBooleanArray(filename, disp.m_id, config));
+    return new BooleanArrayLog(DataLogJNI.openBooleanArray(filename, disp.m_id, config));
   }
 
   /**
@@ -162,7 +163,7 @@ public class DataLog {
    */
   public static DataLog openDoubleArray(String filename, CreationDisposition disp,
                                         DataLogConfig config) {
-    return new DataLog(DataLogJNI.openDoubleArray(filename, disp.m_id, config));
+    return new DoubleArrayLog(DataLogJNI.openDoubleArray(filename, disp.m_id, config));
   }
 
   /**
@@ -175,7 +176,7 @@ public class DataLog {
    */
   public static DataLog openStringArray(String filename, CreationDisposition disp,
                                         DataLogConfig config) {
-    return new DataLog(DataLogJNI.openStringArray(filename, disp.m_id, config));
+    return new StringArrayLog(DataLogJNI.openStringArray(filename, disp.m_id, config));
   }
 
   /**
@@ -204,156 +205,6 @@ public class DataLog {
   }
 
   /**
-   * Appends a record to the log.  For find functions to work, timestamp
-   * must be monotonically increasing.  If it is not, and the configuration
-   * has checkMonotonic true, this function will return false.
-   *
-   * @param value Data to record
-   * @return True if successful, false on failure
-   */
-  public boolean appendBoolean(boolean value) {
-    return DataLogJNI.appendBoolean(m_impl, value);
-  }
-
-  /**
-   * Appends a record to the log.  For find functions to work, timestamp
-   * must be monotonically increasing.  If it is not, and the configuration
-   * has checkMonotonic true, this function will return false.
-   *
-   * @param timestamp Time stamp
-   * @param value     Data to record
-   * @return True if successful, false on failure
-   */
-  public boolean appendBooleanTime(long timestamp, boolean value) {
-    return DataLogJNI.appendBooleanTime(m_impl, timestamp, value);
-  }
-
-  /**
-   * Appends a record to the log.  For find functions to work, timestamp
-   * must be monotonically increasing.  If it is not, and the configuration
-   * has checkMonotonic true, this function will return false.
-   *
-   * @param value Data to record
-   * @return True if successful, false on failure
-   */
-  public boolean appendDouble(double value) {
-    return DataLogJNI.appendDouble(m_impl, value);
-  }
-
-  /**
-   * Appends a record to the log.  For find functions to work, timestamp
-   * must be monotonically increasing.  If it is not, and the configuration
-   * has checkMonotonic true, this function will return false.
-   *
-   * @param timestamp Time stamp
-   * @param value     Data to record
-   * @return True if successful, false on failure
-   */
-  public boolean appendDoubleTime(long timestamp, double value) {
-    return DataLogJNI.appendDoubleTime(m_impl, timestamp, value);
-  }
-
-  /**
-   * Appends a record to the log.  For find functions to work, timestamp
-   * must be monotonically increasing.  If it is not, and the configuration
-   * has checkMonotonic true, this function will return false.
-   *
-   * @param value Data to record
-   * @return True if successful, false on failure
-   */
-  public boolean appendString(String value) {
-    return DataLogJNI.appendString(m_impl, value);
-  }
-
-  /**
-   * Appends a record to the log.  For find functions to work, timestamp
-   * must be monotonically increasing.  If it is not, and the configuration
-   * has checkMonotonic true, this function will return false.
-   *
-   * @param timestamp Time stamp
-   * @param value     Data to record
-   * @return True if successful, false on failure
-   */
-  public boolean appendStringTime(long timestamp, String value) {
-    return DataLogJNI.appendStringTime(m_impl, timestamp, value);
-  }
-
-  /**
-   * Appends a record to the log.  For find functions to work, timestamp
-   * must be monotonically increasing.  If it is not, and the configuration
-   * has checkMonotonic true, this function will return false.
-   *
-   * @param value Data to record
-   * @return True if successful, false on failure
-   */
-  public boolean appendBooleanArray(boolean[] value) {
-    return DataLogJNI.appendBooleanArray(m_impl, value);
-  }
-
-  /**
-   * Appends a record to the log.  For find functions to work, timestamp
-   * must be monotonically increasing.  If it is not, and the configuration
-   * has checkMonotonic true, this function will return false.
-   *
-   * @param timestamp Time stamp
-   * @param value     Data to record
-   * @return True if successful, false on failure
-   */
-  public boolean appendBooleanArrayTime(long timestamp, boolean[] value) {
-    return DataLogJNI.appendBooleanArrayTime(m_impl, timestamp, value);
-  }
-
-  /**
-   * Appends a record to the log.  For find functions to work, timestamp
-   * must be monotonically increasing.  If it is not, and the configuration
-   * has checkMonotonic true, this function will return false.
-   *
-   * @param value Data to record
-   * @return True if successful, false on failure
-   */
-  public boolean appendDoubleArray(double[] value) {
-    return DataLogJNI.appendDoubleArray(m_impl, value);
-  }
-
-  /**
-   * Appends a record to the log.  For find functions to work, timestamp
-   * must be monotonically increasing.  If it is not, and the configuration
-   * has checkMonotonic true, this function will return false.
-   *
-   * @param timestamp Time stamp
-   * @param value     Data to record
-   * @return True if successful, false on failure
-   */
-  public boolean appendDoubleArrayTime(long timestamp, double[] value) {
-    return DataLogJNI.appendDoubleArrayTime(m_impl, timestamp, value);
-  }
-
-  /**
-   * Appends a record to the log.  For find functions to work, timestamp
-   * must be monotonically increasing.  If it is not, and the configuration
-   * has checkMonotonic true, this function will return false.
-   *
-   * @param value Data to record
-   * @return True if successful, false on failure
-   */
-  public boolean appendStringArray(String[] value) {
-    return DataLogJNI.appendStringArray(m_impl, value);
-  }
-
-  /**
-   * Appends a record to the log.  For find functions to work, timestamp
-   * must be monotonically increasing.  If it is not, and the configuration
-   * has checkMonotonic true, this function will return false.
-   *
-   * @param timestamp Time stamp
-   * @param value     Data to record
-   * @return True if successful, false on failure
-   */
-  public boolean appendStringArrayTime(long timestamp, String[] value) {
-    return DataLogJNI.appendStringArrayTime(m_impl, timestamp, value);
-  }
-
-  /**
    * Flushes the log data to disk.
    */
   public void flush() {
@@ -375,7 +226,6 @@ public class DataLog {
   public boolean isFixedSize() {
     return DataLogJNI.isFixedSize(m_impl);
   }
-
 
   public int getSize() {
     return DataLogJNI.getSize(m_impl);
@@ -446,10 +296,6 @@ public class DataLog {
       setData(data);
     }
 
-    private DataLogEntry(long timestamp, String data) {
-      this(timestamp, data.getBytes());
-    }
-
     public long getTimestamp() {
       return m_timestamp;
     }
@@ -462,17 +308,10 @@ public class DataLog {
       return m_data.clone();
     }
 
-    public String getDataString() {
-      return new String(m_data);
-    }
-
     public void setData(byte[] data) {
       m_data = data.clone();
     }
 
-    public void setData(String data) {
-      m_data = data.getBytes();
-    }
   }
 
   /**
