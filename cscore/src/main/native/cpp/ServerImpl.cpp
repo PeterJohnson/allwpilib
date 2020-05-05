@@ -8,7 +8,7 @@
 #include "ServerImpl.h"
 
 #include <wpi/EventLoopRunner.h>
-#include <wpi/HttpServerConnection.h>
+#include <wpi/WebSocketServerConnection.h>
 #include <wpi/UrlParser.h>
 #include <wpi/WebSocketServer.h>
 #include <wpi/json.h>
@@ -17,6 +17,7 @@
 #include <wpi/uv/Tcp.h>
 
 #include "Log.h"
+#include "SourceImpl.h"
 
 namespace uv = wpi::uv;
 
@@ -34,15 +35,16 @@ StringRef GetResource_wpilib_128_png();
 }  // namespace wpi
 
 namespace {
-class MyHttpConnection : public wpi::HttpServerConnection,
-                         public std::enable_shared_from_this<MyHttpConnection> {
+class MyHttpConnection : public wpi::WebSocketServerConnection {
  public:
-  explicit MyHttpConnection(std::shared_ptr<uv::Stream> stream);
+  explicit MyHttpConnection(std::shared_ptr<uv::Stream> stream,
+                            std::weak_ptr<ServerImpl> server);
 
  protected:
   void ProcessRequest() override;
+  void ProcessWsUpgrade() override;
 
-  wpi::WebSocketServerHelper m_websocketHelper;
+  std::weak_ptr<ServerImpl> m_server;
 
   std::weak_ptr<SourceImpl> m_defaultSource;
 
@@ -51,36 +53,9 @@ class MyHttpConnection : public wpi::HttpServerConnection,
 };
 }  // namespace
 
-MyHttpConnection::MyHttpConnection(std::shared_ptr<uv::Stream> stream)
-    : HttpServerConnection(stream), m_websocketHelper(m_request) {
-  // Handle upgrade event
-  m_websocketHelper.upgrade.connect([this] {
-    // Disconnect HttpServerConnection header reader
-    m_dataConn.disconnect();
-    m_messageCompleteConn.disconnect();
-
-    // Accepting the stream may destroy this (as it replaces the stream user
-    // data), so grab a shared pointer first.
-    auto self = shared_from_this();
-
-    // Accept the upgrade
-    auto ws = m_websocketHelper.Accept(m_stream, "cameraserver");
-
-    // Connect the websocket open event to our connected event.
-    // Pass self to delay destruction until this callback happens
-    ws->open.connect_extended([self, s = ws.get()](auto conn, wpi::StringRef) {
-      //wpi::errs() << "websocket connected\n";
-      //InitWs(*s);
-      conn.disconnect();  // one-shot
-    });
-    ws->text.connect([s = ws.get()](wpi::StringRef msg, bool) {
-      //ProcessWsText(*s, msg);
-    });
-    ws->binary.connect([s = ws.get()](wpi::ArrayRef<uint8_t> msg, bool) {
-      //ProcessWsBinary(*s, msg);
-    });
-  });
-}
+MyHttpConnection::MyHttpConnection(std::shared_ptr<uv::Stream> stream,
+                                   std::weak_ptr<ServerImpl> server)
+    : WebSocketServerConnection(stream, {"cameraserver"}), m_server{server} {}
 
 void MyHttpConnection::ProcessRequest() {
   //wpi::errs() << "HTTP request: '" << m_request.GetUrl() << "'\n";
@@ -142,6 +117,21 @@ void MyHttpConnection::ProcessRequest() {
   }
 }
 
+void MyHttpConnection::ProcessWsUpgrade() {
+  // Connect the websocket open event to our connected event.
+  m_websocket->open.connect_extended([this](auto conn, wpi::StringRef) {
+    // wpi::errs() << "websocket connected\n";
+    // InitWs(*s);
+    conn.disconnect();  // one-shot
+  });
+  m_websocket->text.connect([this](wpi::StringRef msg, bool) {
+    // ProcessWsText(*s, msg);
+  });
+  m_websocket->binary.connect([this](wpi::ArrayRef<uint8_t> msg, bool) {
+    // ProcessWsBinary(*s, msg);
+  });
+}
+
 ServerImpl::ServerImpl(const ServerConfig& config,
                        wpi::EventLoopRunner& eventLoop, wpi::Logger& logger)
     : m_eventLoop(eventLoop), m_logger(logger), m_config(config) {}
@@ -160,19 +150,19 @@ void ServerImpl::Start() {
     m_server->Bind(m_config.address, m_config.port);
 
     // when we get a connection, accept it and start reading
-    m_server->connection.connect([srv = m_server.get()] {
-      auto tcp = srv->Accept();
-      if (!tcp) return;
+    m_server->connection.connect([this] {
+      auto stream = m_server->Accept();
+      if (!stream) return;
       // wpi::errs() << "Got a connection\n";
 
       // Close on error
-      tcp->error.connect([s = tcp.get()](uv::Error err) {
+      stream->error.connect([s = stream.get()](uv::Error err) {
         wpi::errs() << "stream error: " << err.str() << '\n';
         s->Close();
       });
 
-      auto conn = std::make_shared<MyHttpConnection>(tcp);
-      tcp->SetData(conn);
+      auto conn = std::make_shared<MyHttpConnection>(stream, weak_from_this());
+      stream->SetData(conn);
     });
 
     // start listening for incoming connections

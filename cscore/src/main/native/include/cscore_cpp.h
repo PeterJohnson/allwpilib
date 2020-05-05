@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #include <functional>
+#include <initializer_list>
 #include <string>
 #include <vector>
 
@@ -103,6 +104,26 @@ struct VideoMode : public CS_VideoMode {
 struct ServerConfig {
   ServerConfig() = default;
   explicit ServerConfig(unsigned int port_) : port{port_} {}
+  ServerConfig(unsigned int port_, CS_Source defaultSource_)
+      : port{port_}, defaultSource{defaultSource_} {}
+  ServerConfig(wpi::StringRef address_, unsigned int port_)
+      : address{address_}, port{port_} {}
+  ServerConfig(wpi::StringRef address_, unsigned int port_,
+               CS_Source defaultSource_)
+      : address{address_}, port{port_}, defaultSource{defaultSource_} {}
+  ServerConfig(wpi::StringRef address_, unsigned int port_,
+               CS_Source defaultSource_, wpi::ArrayRef<CS_Source> onlySources_)
+      : address{address_},
+        port{port_},
+        defaultSource{defaultSource_},
+        onlySources{onlySources_.begin(), onlySources_.end()} {}
+  ServerConfig(wpi::StringRef address_, unsigned int port_,
+               CS_Source defaultSource_,
+               std::initializer_list<CS_Source> onlySources_)
+      : address{address_},
+        port{port_},
+        defaultSource{defaultSource_},
+        onlySources{onlySources_} {}
 
   // Listen address.  If empty, serves on all addresses.
   std::string address;

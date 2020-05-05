@@ -18,7 +18,7 @@ int main() {
     wpi::outs() << "  " << addr << '\n';
   cs::UsbCamera camera{"usbcam", 0};
   camera.SetVideoMode(cs::VideoMode::kMJPEG, 320, 240, 30);
-  cs::VideoServer videoServer{8081};
+  cs::VideoServer videoServer{cs::ServerConfig{8081, camera.GetHandle()}};
 
   CS_Status status = 0;
   cs::AddListener(

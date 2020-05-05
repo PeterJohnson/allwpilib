@@ -8,6 +8,10 @@
 #ifndef CSCORE_SERVERIMPL_H_
 #define CSCORE_SERVERIMPL_H_
 
+#include <memory>
+
+#include <wpi/StringRef.h>
+#include <wpi/Twine.h>
 #include <wpi/uv/Tcp.h>
 
 #include "PropertyContainer.h"
@@ -20,7 +24,8 @@ class Logger;
 
 namespace cs {
 
-class ServerImpl : public PropertyContainer {
+class ServerImpl : public PropertyContainer,
+                   public std::enable_shared_from_this<ServerImpl> {
  public:
   ServerImpl(const ServerConfig& config, wpi::EventLoopRunner& eventLoop,
              wpi::Logger& logger);
