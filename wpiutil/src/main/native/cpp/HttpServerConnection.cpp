@@ -49,11 +49,12 @@ HttpServerConnection::HttpServerConnection(std::shared_ptr<uv::Stream> stream)
 }
 
 void HttpServerConnection::BuildCommonHeaders(raw_ostream& os) {
-  os << "Server: WebServer/1.0\r\n"
-        "Cache-Control: no-store, no-cache, must-revalidate, pre-check=0, "
-        "post-check=0, max-age=0\r\n"
-        "Pragma: no-cache\r\n"
-        "Expires: Mon, 3 Jan 2000 12:34:56 GMT\r\n";
+  os << "Server: WebServer/1.0\r\n";
+  if (!m_request.IsRtsp())
+    os << "Cache-Control: no-store, no-cache, must-revalidate, pre-check=0, "
+          "post-check=0, max-age=0\r\n"
+          "Pragma: no-cache\r\n";
+  os << "Expires: Mon, 3 Jan 2000 12:34:56 GMT\r\n";
 }
 
 void HttpServerConnection::BuildHeader(raw_ostream& os, int code,
@@ -61,14 +62,23 @@ void HttpServerConnection::BuildHeader(raw_ostream& os, int code,
                                        const Twine& contentType,
                                        uint64_t contentLength,
                                        const Twine& extra) {
-  os << "HTTP/" << m_request.GetMajor() << '.' << m_request.GetMinor() << ' '
-     << code << ' ' << codeText << "\r\n";
-  if (contentLength == 0) m_keepAlive = false;
+  bool rtsp = m_request.IsRtsp();
+  if (rtsp)
+    os << "RTSP/";
+  else
+    os << "HTTP/";
+  os << m_request.GetMajor() << '.' << m_request.GetMinor() << ' ' << code
+     << ' ' << codeText << "\r\n";
+  if (!rtsp && contentLength == 0) m_keepAlive = false;
   if (!m_keepAlive) os << "Connection: close\r\n";
   BuildCommonHeaders(os);
-  os << "Content-Type: " << contentType << "\r\n";
+  SmallString<128> contentTypeBuf;
+  StringRef contentTypeStr = contentType.toStringRef(contentTypeBuf);
+  if (!contentTypeStr.empty()) os << "Content-Type: " << contentType << "\r\n";
   if (contentLength != 0) os << "Content-Length: " << contentLength << "\r\n";
-  os << "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: *\r\n";
+  if (!rtsp)
+    os << "Access-Control-Allow-Origin: *\r\n"
+          "Access-Control-Allow-Methods: *\r\n";
   SmallString<128> extraBuf;
   StringRef extraStr = extra.toStringRef(extraBuf);
   if (!extraStr.empty()) os << extraStr;
