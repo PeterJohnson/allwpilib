@@ -49,6 +49,36 @@ TEST(HttpParserTest, UrlMethodHeader) {
   ASSERT_FALSE(p.HasError());
 }
 
+TEST(HttpParserTest, RtspDescribe) {
+  HttpParser p{HttpParser::kRtspRequest};
+  p.Execute("DESCRIBE rtsp://localhost/foo/bar");
+  p.Execute(" RTSP/2.0\r\n");
+  ASSERT_FALSE(p.HasError());
+  ASSERT_EQ(p.GetUrl(), "rtsp://localhost/foo/bar");
+  ASSERT_TRUE(p.IsRtsp());
+  ASSERT_EQ(p.GetMethod(), RTSP_DESCRIBE);
+}
+
+TEST(HttpParserTest, HttpRtspDescribe) {
+  HttpParser p{HttpParser::kHttpRtspRequest};
+  p.Execute("DESCRIBE rtsp://localhost/foo/bar");
+  p.Execute(" RTSP/2.0\r\n");
+  ASSERT_FALSE(p.HasError());
+  ASSERT_EQ(p.GetUrl(), "rtsp://localhost/foo/bar");
+  ASSERT_TRUE(p.IsRtsp());
+  ASSERT_EQ(p.GetMethod(), RTSP_DESCRIBE);
+}
+
+TEST(HttpParserTest, RtspOptions) {
+  HttpParser p{HttpParser::kHttpRtspRequest};
+  p.Execute("OPTIONS rtsp://localhost/foo/bar");
+  p.Execute(" RTSP/2.0\r\n");
+  ASSERT_FALSE(p.HasError());
+  ASSERT_EQ(p.GetUrl(), "rtsp://localhost/foo/bar");
+  ASSERT_TRUE(p.IsRtsp());
+  ASSERT_EQ(p.GetMethod(), RTSP_OPTIONS);
+}
+
 TEST(HttpParserTest, StatusHeadersComplete) {
   HttpParser p{HttpParser::kResponse};
   int callbacks = 0;
