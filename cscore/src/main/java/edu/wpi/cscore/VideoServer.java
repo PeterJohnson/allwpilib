@@ -10,7 +10,7 @@ package edu.wpi.cscore;
 /**
  * A network server for video.
  */
-public class VideoServer extends VideoNode implements AutoClosable {
+public class VideoServer extends VideoNode implements AutoCloseable {
   /**
    * Create a network video server.  By default, the server will be stopped
    * when this object is destroyed; call Detach() to keep the server running
@@ -137,7 +137,7 @@ public class VideoServer extends VideoNode implements AutoClosable {
    * Stops all servers.
    */
   public static void stopAll() {
-    return CameraServerJNI.stopAllServers();
+    CameraServerJNI.stopAllServers();
   }
 
   /**
@@ -151,7 +151,7 @@ public class VideoServer extends VideoNode implements AutoClosable {
    * Get the listen address of the server.
    */
   public String getListenAddress() {
-    return getConfig().listenAddress;
+    return getConfig().address;
   }
 
   /**
