@@ -14,6 +14,7 @@ ext {
 // }
 
 apply from: "${rootDir}/shared/jni/setupBuild.gradle"
+apply from: "${rootDir}/shared/resources.gradle"
 
 ext {
     sharedCvConfigs = [cscore    : [],
@@ -24,7 +25,19 @@ ext {
     staticCvConfigs = [cscoreJNI: []]
     useJava = true
     useCpp = true
+    def generateTask = createGenerateResourcesTask('main', 'CS', 'cs', project)
     splitSetup = {
+        it.sources {
+            resourcesCpp(CppSourceSet) {
+                source {
+                    srcDirs "$buildDir/generated/main/cpp", "$rootDir/shared/singlelib"
+                    include '*.cpp'
+                }
+                exportedHeaders {
+                    srcDirs 'src/main/native/include'
+                }
+            }
+        }
         if (it.targetPlatform.operatingSystem.isMacOsX()) {
             it.sources {
                 // macObjCpp(ObjectiveCppSourceSet) {

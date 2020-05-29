@@ -1,10 +1,13 @@
 project(cscore)
 
 include(SubDirList)
+include(GenResources)
 include(CompileWarnings)
 include(AddTest)
 
 find_package( OpenCV REQUIRED )
+
+GENERATE_RESOURCES(src/main/native/resources generated/main/cpp CS cs cscore_resources_src)
 
 file(GLOB
     cscore_native_src src/main/native/cpp/*.cpp)
@@ -12,7 +15,7 @@ file(GLOB cscore_linux_src src/main/native/linux/*.cpp)
 file(GLOB cscore_osx_src src/main/native/osx/*.cpp)
 file(GLOB cscore_windows_src src/main/native/windows/*.cpp)
 
-add_library(cscore ${cscore_native_src})
+add_library(cscore ${cscore_native_src} ${cscore_resources_src})
 set_target_properties(cscore PROPERTIES DEBUG_POSTFIX "d")
 
 if(NOT MSVC)
