@@ -243,6 +243,15 @@ class VideoSource : public VideoNode {
   VideoSource& operator=(const VideoSource& other) = default;
 
   /**
+   * Get a VideoSource by name.  Returns an invalid source if the source does
+   * not exist.
+   *
+   * @param name name
+   * @return VideoSource
+   */
+  static VideoSource GetSourceByName(wpi::StringRef name);
+
+  /**
    * Get the kind of the source.
    */
   Kind GetKind() const;

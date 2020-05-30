@@ -359,6 +359,13 @@ bool IsNodeEnabled(CS_Handle node, CS_Status* status) {
   return false;
 }
 
+CS_Source GetSourceByName(wpi::StringRef name, CS_Status* status) {
+  auto [handle, data] = Instance::GetInstance().FindSourceByName(name);
+  if (handle == 0) *status = CS_INVALID_HANDLE;
+  if (data) ++data->refCount;
+  return handle;
+}
+
 //
 // Source Functions
 //

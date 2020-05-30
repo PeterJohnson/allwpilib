@@ -124,6 +124,13 @@ inline VideoProperty VideoNode::GetProperty(const wpi::Twine& name) const {
   return VideoProperty{GetNodeProperty(m_handle, name, &m_status)};
 }
 
+inline VideoSource VideoSource::GetSourceByName(wpi::StringRef name) {
+  CS_Status status = 0;
+  VideoSource source{cs::GetSourceByName(name, &status)};
+  source.m_status = status;
+  return source;
+}
+
 inline VideoSource::Kind VideoSource::GetKind() const {
   m_status = 0;
   return static_cast<VideoSource::Kind>(GetSourceKind(m_handle, &m_status));

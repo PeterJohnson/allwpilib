@@ -91,6 +91,7 @@ public class CameraServerJNI {
   public static native int createNetworkSource(String name, String url);
   public static native int createNetworkSourceMulti(String name, String[] urls);
   public static native int createImageSource(String name, int pixelFormat, int width, int height, int fps);
+  public static native int getSourceByName(String name);
 
   //
   // Source Functions

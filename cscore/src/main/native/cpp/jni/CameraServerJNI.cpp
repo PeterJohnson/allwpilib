@@ -676,6 +676,25 @@ Java_edu_wpi_cscore_CameraServerJNI_createImageSource
 
 /*
  * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    getSourceByName
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL
+Java_edu_wpi_cscore_CameraServerJNI_getSourceByName
+  (JNIEnv* env, jclass, jstring name)
+{
+  if (!name) {
+    nullPointerEx.Throw(env, "name cannot be null");
+    return 0;
+  }
+  CS_Status status = 0;
+  auto val = cs::GetSourceByName(JStringRef{env, name}.str(), &status);
+  CheckStatus(env, status);
+  return val;
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
  * Method:    getSourceKind
  * Signature: (I)I
  */

@@ -117,6 +117,12 @@ std::pair<CS_Sink, std::shared_ptr<SinkData>> Instance::FindSink(
       [&](const SinkData& data) { return data.sink.get() == &sink; });
 }
 
+std::pair<CS_Source, std::shared_ptr<SourceData>> Instance::FindSourceByName(
+    wpi::StringRef name) {
+  return m_impl->sources.FindIf(
+      [&](const SourceData& data) { return data.source->GetName() == name; });
+}
+
 std::shared_ptr<SourceData> Instance::GetSource(CS_Source handle) {
   return m_impl->sources.Get(handle);
 }

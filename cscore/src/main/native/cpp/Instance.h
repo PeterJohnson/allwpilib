@@ -12,6 +12,8 @@
 #include <memory>
 #include <utility>
 
+#include <wpi/StringRef.h>
+
 #include "cscore_cpp.h"
 
 namespace wpi {
@@ -67,6 +69,9 @@ class Instance {
   std::pair<CS_Sink, std::shared_ptr<SinkData>> FindSink(const SinkImpl& sink);
   std::pair<CS_Source, std::shared_ptr<SourceData>> FindSource(
       const SourceImpl& source);
+
+  std::pair<CS_Source, std::shared_ptr<SourceData>> FindSourceByName(
+      wpi::StringRef name);
 
   void SetDefaultLogger();
 

@@ -82,6 +82,17 @@ public class VideoSource extends VideoNode {
   }
 
   /**
+   * Get a VideoSource by name.  Throws a VideoException if the source does
+   * not exist.
+   *
+   * @param name name
+   * @return VideoSource
+   */
+  public static VideoSource getSourceByName(String name) {
+    return new VideoSource(CameraServerJNI.getSourceByName(name));
+  }
+
+  /**
    * Get the kind of the source.
    */
   public Kind getKind() {

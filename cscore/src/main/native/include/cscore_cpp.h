@@ -230,6 +230,7 @@ CS_Source CreateNetworkSource(const wpi::Twine& name,
                               CS_Status* status);
 CS_Source CreateImageSource(const wpi::Twine& name, const VideoMode& mode,
                             CS_Status* status);
+CS_Source GetSourceByName(wpi::StringRef name, CS_Status* status);
 /** @} */
 
 /**

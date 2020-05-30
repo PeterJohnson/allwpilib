@@ -115,6 +115,10 @@ CS_Bool CS_IsNodeEnabled(CS_Handle node, CS_Status* status) {
   return cs::IsNodeEnabled(node, status);
 }
 
+CS_Source CS_GetSourceByName(const char* name, CS_Status* status) {
+  return cs::GetSourceByName(name, status);
+}
+
 CS_SourceKind CS_GetSourceKind(CS_Source source, CS_Status* status) {
   return cs::GetSourceKind(source, status);
 }
