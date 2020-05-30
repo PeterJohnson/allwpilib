@@ -491,30 +491,6 @@ class NetworkSource : public VideoCamera {
    * Create a source for a network video stream.
    *
    * @param name Source name (arbitrary unique identifier)
-   * @param url Camera URL (e.g. "http://10.x.y.11/video/stream.mjpg")
-   */
-  NetworkSource(const wpi::Twine& name, const wpi::Twine& url);
-
-  /**
-   * Create a source for a network video stream.
-   *
-   * @param name Source name (arbitrary unique identifier)
-   * @param url Camera URL (e.g. "http://10.x.y.11/video/stream.mjpg")
-   */
-  NetworkSource(const wpi::Twine& name, const char* url);
-
-  /**
-   * Create a source for a network video stream.
-   *
-   * @param name Source name (arbitrary unique identifier)
-   * @param url Camera URL (e.g. "http://10.x.y.11/video/stream.mjpg")
-   */
-  NetworkSource(const wpi::Twine& name, const std::string& url);
-
-  /**
-   * Create a source for a network video stream.
-   *
-   * @param name Source name (arbitrary unique identifier)
    * @param urls Array of Camera URLs
    */
   NetworkSource(const wpi::Twine& name, wpi::ArrayRef<std::string> urls);

@@ -311,10 +311,8 @@ CS_Bool CS_IsNodeEnabled(CS_Handle node, CS_Status* status);
 CS_Source CS_CreateUsbCameraDev(const char* name, int dev, CS_Status* status);
 CS_Source CS_CreateUsbCameraPath(const char* name, const char* path,
                                  CS_Status* status);
-CS_Source CS_CreateNetworkSource(const char* name, const char* url,
+CS_Source CS_CreateNetworkSource(const char* name, const char** urls, int count,
                                  CS_Status* status);
-CS_Source CS_CreateNetworkSourceMulti(const char* name, const char** urls,
-                                      int count, CS_Status* status);
 CS_Source CS_CreateImageSource(const char* name, const CS_VideoMode* mode,
                                CS_Status* status);
 /** @} */

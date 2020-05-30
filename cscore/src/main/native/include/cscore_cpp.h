@@ -274,13 +274,12 @@ CS_Source CreateUsbCameraDev(const wpi::Twine& name, int dev,
                              CS_Status* status);
 CS_Source CreateUsbCameraPath(const wpi::Twine& name, const wpi::Twine& path,
                               CS_Status* status);
-CS_Source CreateNetworkSource(const wpi::Twine& name, const wpi::Twine& url,
-                              CS_Status* status);
 CS_Source CreateNetworkSource(const wpi::Twine& name,
                               wpi::ArrayRef<std::string> urls,
                               CS_Status* status);
 CS_Source CreateImageSource(const wpi::Twine& name, const VideoMode& mode,
                             CS_Status* status);
+CS_Source GetSourceByName(const wpi::Twine& name, CS_Status* status);
 /** @} */
 
 /**

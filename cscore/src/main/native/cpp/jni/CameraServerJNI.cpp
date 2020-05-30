@@ -657,7 +657,7 @@ Java_edu_wpi_cscore_CameraServerJNI_createNetworkSource
   }
   CS_Status status = 0;
   auto val = cs::CreateNetworkSource(JStringRef{env, name}.str(),
-                                     JStringRef{env, url}.str(), &status);
+                                     JStringRef{env, url}.str().str(), &status);
   CheckStatus(env, status);
   return val;
 }

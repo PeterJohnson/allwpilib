@@ -279,19 +279,6 @@ inline void UsbCamera::SetConnectVerbose(int level) {
 }
 
 inline NetworkSource::NetworkSource(const wpi::Twine& name,
-                                    const wpi::Twine& url) {
-  m_handle = CreateNetworkSource(name, url, &m_status);
-}
-
-inline NetworkSource::NetworkSource(const wpi::Twine& name, const char* url) {
-  m_handle = CreateNetworkSource(name, url, &m_status);
-}
-
-inline NetworkSource::NetworkSource(const wpi::Twine& name,
-                                    const std::string& url)
-    : NetworkSource(name, wpi::Twine{url}) {}
-
-inline NetworkSource::NetworkSource(const wpi::Twine& name,
                                     wpi::ArrayRef<std::string> urls) {
   m_handle = CreateNetworkSource(name, urls, &m_status);
 }
@@ -327,19 +314,15 @@ inline std::vector<std::string> NetworkSource::GetUrls() const {
 
 inline HttpCamera::HttpCamera(const wpi::Twine& name, const wpi::Twine& url,
                               HttpCameraKind kind)
-    : NetworkSource(name, url) {
-  GetProperty("http_kind").Set(kind);
-}
+    : HttpCamera(name, url.str(), kind) {}
 
 inline HttpCamera::HttpCamera(const wpi::Twine& name, const char* url,
                               HttpCameraKind kind)
-    : NetworkSource(name, url) {
-  GetProperty("http_kind").Set(kind);
-}
+    : HttpCamera(name, std::string{url}, kind) {}
 
 inline HttpCamera::HttpCamera(const wpi::Twine& name, const std::string& url,
                               HttpCameraKind kind)
-    : HttpCamera(name, wpi::Twine{url}, kind) {}
+    : HttpCamera(name, wpi::makeArrayRef(url), kind) {}
 
 inline HttpCamera::HttpCamera(const wpi::Twine& name,
                               wpi::ArrayRef<std::string> urls,

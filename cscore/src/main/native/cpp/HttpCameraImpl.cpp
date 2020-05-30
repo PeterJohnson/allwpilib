@@ -506,14 +506,6 @@ void HttpCameraImpl::NumSinksEnabledChanged() {
 
 namespace cs {
 
-CS_Source CreateNetworkSource(const wpi::Twine& name, const wpi::Twine& url,
-                              CS_Status* status) {
-  auto& inst = Instance::GetInstance();
-  auto source = std::make_shared<HttpCameraImpl>(name, inst.GetLogger());
-  if (!source->SetUrls(url.str(), status)) return 0;
-  return inst.CreateSource(CS_SOURCE_NETWORK, source);
-}
-
 CS_Source CreateNetworkSource(const wpi::Twine& name,
                               wpi::ArrayRef<std::string> urls,
                               CS_Status* status) {
@@ -555,13 +547,8 @@ std::vector<std::string> GetNetworkSourceUrls(CS_Source source,
 
 extern "C" {
 
-CS_Source CS_CreateNetworkSource(const char* name, const char* url,
+CS_Source CS_CreateNetworkSource(const char* name, const char** urls, int count,
                                  CS_Status* status) {
-  return cs::CreateNetworkSource(name, url, status);
-}
-
-CS_Source CS_CreateNetworkSourceMulti(const char* name, const char** urls,
-                                      int count, CS_Status* status) {
   wpi::SmallVector<std::string, 4> vec;
   vec.reserve(count);
   for (int i = 0; i < count; ++i) vec.push_back(urls[i]);
