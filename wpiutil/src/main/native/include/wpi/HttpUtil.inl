@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------------*/
-/* Copyright (c) FIRST 2015. All Rights Reserved.                             */
+/* Copyright (c) FIRST 2015-2020. All Rights Reserved.                        */
 /* Open Source Software - may be modified and shared by FRC teams. The code   */
 /* must be accompanied by the FIRST BSD license file in the root directory of */
 /* the project.                                                               */
@@ -9,6 +9,10 @@
 #define WPIUTIL_SUPPORT_HTTPUTIL_INL_
 
 namespace wpi {
+
+inline HttpPathRef HttpPath::drop_front(size_t n) const {
+  return HttpPathRef(*this, n);
+}
 
 template <typename T>
 HttpRequest::HttpRequest(const HttpLocation& loc, const T& extraParams)
