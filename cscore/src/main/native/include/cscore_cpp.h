@@ -64,6 +64,9 @@ struct UsbCameraInfo {
   int productId = -1;
 };
 
+void to_json(wpi::json& j, const UsbCameraInfo& info);
+void from_json(const wpi::json& j, UsbCameraInfo& info);
+
 /**
  * Video mode
  */
@@ -97,6 +100,9 @@ struct VideoMode : public CS_VideoMode {
 
   bool operator!=(const VideoMode& other) const { return !(*this == other); }
 };
+
+void to_json(wpi::json& j, const VideoMode& mode);
+void from_json(const wpi::json& j, VideoMode& mode);
 
 /**
  * Server configuration

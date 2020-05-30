@@ -77,6 +77,95 @@ static std::shared_ptr<PropertyContainer> GetProperty(
 
 namespace cs {
 
+void to_json(wpi::json& j, const UsbCameraInfo& info) {
+  j.emplace("dev", info.dev);
+  j.emplace("path", info.path);
+  j.emplace("name", info.name);
+  j.emplace("otherPaths", info.otherPaths);
+  if (info.vendorId != -1) j.emplace("vendorId", info.vendorId);
+  if (info.productId != -1) j.emplace("productId", info.productId);
+}
+
+void from_json(const wpi::json& j, UsbCameraInfo& info) {
+  info = UsbCameraInfo{};
+
+  if (j.count("dev") != 0) info.dev = j.at("dev").get<int>();
+  if (j.count("path") != 0)
+    info.path = j.at("path").get_ref<const std::string&>();
+  if (j.count("name") != 0)
+    info.name = j.at("name").get_ref<const std::string&>();
+  if (j.count("otherPaths") != 0)
+    info.otherPaths = j.at("otherPaths").get<std::vector<std::string>>();
+  if (j.count("vendorId") != 0) info.vendorId = j.at("vendorId").get<int>();
+  if (j.count("productId") != 0) info.productId = j.at("productId").get<int>();
+}
+
+void to_json(wpi::json& j, const VideoMode& mode) {
+  // pixel format
+  wpi::StringRef pixelFormatStr;
+  switch (mode.pixelFormat) {
+    case VideoMode::kMJPEG:
+      pixelFormatStr = "mjpeg";
+      break;
+    case VideoMode::kYUYV:
+      pixelFormatStr = "yuyv";
+      break;
+    case VideoMode::kRGB565:
+      pixelFormatStr = "rgb565";
+      break;
+    case VideoMode::kBGR:
+      pixelFormatStr = "bgr";
+      break;
+    case VideoMode::kGray:
+      pixelFormatStr = "gray";
+      break;
+    default:
+      break;
+  }
+  if (!pixelFormatStr.empty()) j.emplace("pixelFormat", pixelFormatStr);
+
+  // width
+  if (mode.width != 0) j.emplace("width", mode.width);
+
+  // height
+  if (mode.height != 0) j.emplace("height", mode.height);
+
+  // fps
+  if (mode.fps != 0) j.emplace("fps", mode.fps);
+}
+
+void from_json(const wpi::json& j, VideoMode& mode) {
+  mode = VideoMode{};
+
+  // pixel format
+  if (j.count("pixelFormat") != 0) {
+    const auto& str = j.at("pixelFormat").get_ref<const std::string&>();
+    wpi::StringRef s(str);
+    if (s.equals_lower("mjpeg"))
+      mode.pixelFormat = cs::VideoMode::kMJPEG;
+    else if (s.equals_lower("yuyv"))
+      mode.pixelFormat = cs::VideoMode::kYUYV;
+    else if (s.equals_lower("rgb565"))
+      mode.pixelFormat = cs::VideoMode::kRGB565;
+    else if (s.equals_lower("bgr"))
+      mode.pixelFormat = cs::VideoMode::kBGR;
+    else if (s.equals_lower("gray"))
+      mode.pixelFormat = cs::VideoMode::kGray;
+    else
+      throw wpi::json::other_error::create(
+          600, "invalid pixelFormat " + wpi::Twine(s));
+  }
+
+  // width
+  if (j.count("width") != 0) mode.width = j.at("width").get<unsigned int>();
+
+  // height
+  if (j.count("height") != 0) mode.height = j.at("height").get<unsigned int>();
+
+  // fps
+  if (j.count("fps") != 0) mode.fps = j.at("fps").get<unsigned int>();
+}
+
 //
 // Property Functions
 //
