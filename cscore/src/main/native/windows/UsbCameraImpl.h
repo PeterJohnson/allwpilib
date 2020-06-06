@@ -77,12 +77,14 @@ class UsbCameraImpl : public SourceImpl,
   void ProcessFrame(IMFSample* sample, const VideoMode& mode);
   void PostRequestNewFrame();
 
-  std::string GetPath() { return m_path; }
+  void SetPath(const wpi::Twine& path, CS_Status* status);
+  std::string GetPath();
 
   // Messages passed to/from camera thread
   struct Message {
     enum Kind {
       kNone = 0,
+      kCmdSetPath,
       kCmdSetMode,
       kCmdSetPixelFormat,
       kCmdSetResolution,
@@ -170,9 +172,6 @@ class UsbCameraImpl : public SourceImpl,
   std::unique_ptr<cs::WindowsMessagePump> m_messagePump;
   ComPtr<IMFMediaType> m_currentMode;
 
-  //
-  // Path never changes, so not protected by mutex.
-  //
   std::string m_path;
 
   std::wstring m_widePath;

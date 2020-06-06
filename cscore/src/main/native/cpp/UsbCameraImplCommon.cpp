@@ -44,6 +44,11 @@ CS_Source CS_CreateUsbCameraPath(const char* name, const char* path,
   return cs::CreateUsbCameraPath(name, path, status);
 }
 
+void CS_SetUsbCameraPath(CS_Source source, const char* path,
+                         CS_Status* status) {
+  cs::SetUsbCameraPath(source, path, status);
+}
+
 char* CS_GetUsbCameraPath(CS_Source source, CS_Status* status) {
   return ConvertToC(cs::GetUsbCameraPath(source, status));
 }

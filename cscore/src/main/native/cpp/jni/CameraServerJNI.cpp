@@ -1018,6 +1018,20 @@ Java_edu_wpi_cscore_CameraServerJNI_setCameraExposureManual
 
 /*
  * Class:     edu_wpi_cscore_CameraServerJNI
+ * Method:    setUsbCameraPath
+ * Signature: (ILjava/lang/String;)
+ */
+JNIEXPORT void JNICALL
+Java_edu_wpi_cscore_CameraServerJNI_setUsbCameraPath
+  (JNIEnv* env, jclass, jint source, jstring path)
+{
+  CS_Status status = 0;
+  cs::SetUsbCameraPath(source, JStringRef{env, path}.str(), &status);
+  CheckStatus(env, status);
+}
+
+/*
+ * Class:     edu_wpi_cscore_CameraServerJNI
  * Method:    getUsbCameraPath
  * Signature: (I)Ljava/lang/String;
  */

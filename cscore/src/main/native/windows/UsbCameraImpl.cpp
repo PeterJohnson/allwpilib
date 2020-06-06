@@ -195,6 +195,20 @@ void UsbCameraImpl::NumSinksEnabledChanged() {
       SetCameraMessage, Message::kNumSinksEnabledChanged, nullptr);
 }
 
+void UsbCameraImpl::SetPath(const wpi::Twine& path, CS_Status* status) {
+  Message msg{Message::kCmdSetPath};
+  msg.dataStr = path.str();
+  auto result =
+      m_messagePump->SendWindowMessage<CS_Status, Message::Kind, Message*>(
+          SetCameraMessage, msg.kind, &msg);
+  *status = result;
+}
+
+std::string UsbCameraImpl::GetPath() const {
+  std::scoped_lock lock(m_mutex);
+  return m_path;
+}
+
 void UsbCameraImpl::StartMessagePump() {
   m_messagePump = std::make_unique<WindowsMessagePump>(
       [this](HWND hwnd, UINT uiMsg, WPARAM wParam, LPARAM lParam) {
@@ -702,6 +716,9 @@ CS_StatusValue UsbCameraImpl::DeviceProcessCommand(
       DeviceStreamOn();
     }
     return CS_OK;
+  } else if (msgKind == Message::kCmdSetPath) {
+    // TODO
+    return CS_OK;
   } else {
     return CS_OK;
   }
@@ -1045,6 +1062,16 @@ CS_Source CreateUsbCameraPath(const wpi::Twine& name, const wpi::Twine& path,
   auto& inst = Instance::GetInstance();
   auto source = std::make_shared<UsbCameraImpl>(name, inst.GetLogger(), path);
   return inst.CreateSource(CS_SOURCE_USB, source);
+}
+
+void SetUsbCameraPath(CS_Source source, const wpi::Twine& path,
+                      CS_Status* status) {
+  auto data = Instance::GetInstance().GetSource(source);
+  if (!data || data->kind != CS_SOURCE_USB) {
+    *status = CS_INVALID_HANDLE;
+    return;
+  }
+  static_cast<UsbCameraImpl&>(*data->source).SetPath(path, status);
 }
 
 std::string GetUsbCameraPath(CS_Source source, CS_Status* status) {

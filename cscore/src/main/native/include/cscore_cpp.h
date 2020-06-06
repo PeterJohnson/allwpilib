@@ -284,6 +284,7 @@ void SetCameraExposureManual(CS_Source source, int value, CS_Status* status);
  * @defgroup cscore_usbcamera_func UsbCamera Source Functions
  * @{
  */
+void SetUsbCameraPath(CS_Source, const wpi::Twine& path, CS_Status* status);
 std::string GetUsbCameraPath(CS_Source source, CS_Status* status);
 UsbCameraInfo GetUsbCameraInfo(CS_Source source, CS_Status* status);
 /** @} */

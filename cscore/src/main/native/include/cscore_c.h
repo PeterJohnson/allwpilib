@@ -340,6 +340,7 @@ void CS_SetCameraExposureManual(CS_Source source, int value, CS_Status* status);
  * @defgroup cscore_usbcamera_cfunc UsbCamera Source Functions
  * @{
  */
+void CS_SetUsbCameraPath(CS_Source source, const char* path, CS_Status* status);
 char* CS_GetUsbCameraPath(CS_Source source, CS_Status* status);
 CS_UsbCameraInfo* CS_GetUsbCameraInfo(CS_Source source, CS_Status* status);
 /** @} */

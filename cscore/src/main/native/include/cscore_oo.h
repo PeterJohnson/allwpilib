@@ -471,6 +471,11 @@ class UsbCamera : public VideoCamera {
   static std::vector<UsbCameraInfo> EnumerateUsbCameras();
 
   /**
+   * Change the path to the device.
+   */
+  void SetPath(const wpi::Twine& path);
+
+  /**
    * Get the path to the device.
    */
   std::string GetPath() const;
