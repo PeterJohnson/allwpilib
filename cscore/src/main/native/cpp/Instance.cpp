@@ -24,6 +24,7 @@
 #include "SourceImpl.h"
 #include "Telemetry.h"
 #include "UnlimitedHandleResource.h"
+#include "UsbCameraNotifier.h"
 
 using namespace cs;
 
@@ -57,6 +58,7 @@ class Instance::Impl {
 
   wpi::Logger logger;
   Notifier notifier;
+  UsbCameraNotifier usbCameraNotifier;
   Telemetry telemetry;
   NetworkListener networkListener;
   UnlimitedHandleResource<Handle, SourceData, Handle::kSource> sources;
@@ -72,9 +74,13 @@ Instance::Instance() : m_impl(new Impl) {
       [=] { m_impl->notifier.Notify(RawEvent::kNetworkInterfacesChanged); });
   m_impl->telemetry.telemetryUpdated.connect(
       [=] { m_impl->notifier.Notify(RawEvent::kTelemetryUpdated); });
+  m_impl->usbCameraNotifier.camerasChanged.connect(
+      [=] { m_impl->notifier.Notify(RawEvent::kUsbCamerasChanged); });
 
-  m_impl->eventLoop.ExecAsync(
-      [this](wpi::uv::Loop& loop) { m_impl->notifier.StartLoop(loop); });
+  m_impl->eventLoop.ExecAsync([this](wpi::uv::Loop& loop) {
+    m_impl->notifier.StartLoop(loop);
+    m_impl->usbCameraNotifier.Start(loop);
+  });
 }
 
 Instance::~Instance() {}

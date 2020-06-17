@@ -177,7 +177,8 @@ struct RawEvent {
     kServerStopped = CS_SERVER_STOPPED,
     kServerPropertyCreated = CS_SERVER_PROPERTY_CREATED,
     kServerPropertyValueUpdated = CS_SERVER_PROPERTY_VALUE_UPDATED,
-    kServerPropertyChoicesUpdated = CS_SERVER_PROPERTY_CHOICES_UPDATED
+    kServerPropertyChoicesUpdated = CS_SERVER_PROPERTY_CHOICES_UPDATED,
+    kUsbCamerasChanged = CS_USB_CAMERAS_CHANGED
   };
 
   RawEvent() = default;

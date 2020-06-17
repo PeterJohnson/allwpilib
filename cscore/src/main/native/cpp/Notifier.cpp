@@ -10,8 +10,6 @@
 #include <queue>
 #include <vector>
 
-#include <wpi/EventLoopRunner.h>
-
 #include "Handle.h"
 #include "Instance.h"
 #include "SinkImpl.h"
