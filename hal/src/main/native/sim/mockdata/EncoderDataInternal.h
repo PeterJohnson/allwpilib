@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------------*/
-/* Copyright (c) 2017-2019 FIRST. All Rights Reserved.                        */
+/* Copyright (c) 2017-2020 FIRST. All Rights Reserved.                        */
 /* Open Source Software - may be modified and shared by FRC teams. The code   */
 /* must be accompanied by the FIRST BSD license file in the root directory of */
 /* the project.                                                               */
@@ -10,6 +10,7 @@
 #include <atomic>
 #include <limits>
 
+#include "hal/Encoder.h"
 #include "mockdata/EncoderData.h"
 #include "mockdata/SimDataValue.h"
 
@@ -43,6 +44,34 @@ class EncoderData {
       0};
   SimDataValue<double, HAL_MakeDouble, GetDistancePerPulseName>
       distancePerPulse{1};
+
+  HAL_EncoderEncodingType encodingType;
+
+  int GetEncodingScaleFactor() const {
+    switch (encodingType) {
+      case HAL_Encoder_k1X:
+        return 1;
+      case HAL_Encoder_k2X:
+        return 2;
+      case HAL_Encoder_k4X:
+        return 4;
+      default:
+        return 0;
+    }
+  }
+
+  double GetDecodingScaleFactor() const {
+    switch (encodingType) {
+      case HAL_Encoder_k1X:
+        return 1.0;
+      case HAL_Encoder_k2X:
+        return 0.5;
+      case HAL_Encoder_k4X:
+        return 0.25;
+      default:
+        return 0.0;
+    }
+  }
 
   virtual void ResetData();
 };
