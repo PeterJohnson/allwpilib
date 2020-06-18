@@ -10,6 +10,7 @@
 #include <atomic>
 #include <limits>
 
+#include "hal/Encoder.h"
 #include "hal/simulation/EncoderData.h"
 #include "hal/simulation/SimDataValue.h"
 
@@ -43,6 +44,34 @@ class EncoderData {
       0};
   SimDataValue<double, HAL_MakeDouble, GetDistancePerPulseName>
       distancePerPulse{1};
+
+  HAL_EncoderEncodingType encodingType;
+
+  int GetEncodingScaleFactor() const {
+    switch (encodingType) {
+      case HAL_Encoder_k1X:
+        return 1;
+      case HAL_Encoder_k2X:
+        return 2;
+      case HAL_Encoder_k4X:
+        return 4;
+      default:
+        return 0;
+    }
+  }
+
+  double GetDecodingScaleFactor() const {
+    switch (encodingType) {
+      case HAL_Encoder_k1X:
+        return 1.0;
+      case HAL_Encoder_k2X:
+        return 0.5;
+      case HAL_Encoder_k4X:
+        return 0.25;
+      default:
+        return 0.0;
+    }
+  }
 
   virtual void ResetData();
 };
