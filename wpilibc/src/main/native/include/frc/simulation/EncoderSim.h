@@ -13,12 +13,22 @@
 #include <mockdata/EncoderData.h>
 
 #include "CallbackStore.h"
+#include "frc/Encoder.h"
 
 namespace frc {
 namespace sim {
 class EncoderSim {
  public:
-  explicit EncoderSim(int index) { m_index = index; }
+  explicit EncoderSim(const Encoder& encoder)
+      : m_index(encoder.GetFPGAIndex()) {}
+
+  static EncoderSim CreateForChannel(int channel) {
+    return EncoderSim{HALSIM_FindEncoderForChannel(channel)};
+  }
+
+  static EncoderSim CreateForIndex(int index) {
+    return EncoderSim{index};
+  }
 
   std::unique_ptr<CallbackStore> RegisterInitializedCallback(
       NotifyCallback callback, bool initialNotify) {
@@ -168,6 +178,8 @@ class EncoderSim {
   double GetRate() { return HALSIM_GetEncoderRate(m_index); }
 
  private:
+  explicit EncoderSim(int index) : m_index(index) {}
+
   int m_index;
 };
 }  // namespace sim

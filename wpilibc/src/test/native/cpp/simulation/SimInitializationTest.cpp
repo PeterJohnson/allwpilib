@@ -37,7 +37,8 @@ TEST(SimInitializationTests, TestAllInitialize) {
   DIOSim diosim{0};
   DriverStationSim dssim;
   (void)dssim;
-  EncoderSim esim{0};
+  EncoderSim esim = EncoderSim::CreateForIndex(0);
+  (void)esim;
   PCMSim pcmsim{0};
   PDPSim pdpsim{0};
   PWMSim pwmsim{0};

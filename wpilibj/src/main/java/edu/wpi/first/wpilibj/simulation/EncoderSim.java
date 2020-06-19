@@ -9,12 +9,30 @@ package edu.wpi.first.wpilibj.simulation;
 
 import edu.wpi.first.hal.sim.NotifyCallback;
 import edu.wpi.first.hal.sim.mockdata.EncoderDataJNI;
+import edu.wpi.first.wpilibj.Encoder;
+import java.util.NoSuchElementException;
 
 public class EncoderSim {
   private final int m_index;
 
-  public EncoderSim(int index) {
+  public EncoderSim(Encoder encoder) {
+    m_index = encoder.getFPGAIndex();
+  }
+
+  private EncoderSim(int index) {
     m_index = index;
+  }
+
+  public static EncoderSim createForChannel(int channel) {
+    int index = EncoderDataJNI.findEncoderForChannel(channel);
+    if (index < 0) {
+      throw new NoSuchElementException("no encoder found for channel " + channel);
+    }
+    return new EncoderSim(index);
+  }
+
+  public static EncoderSim createForIndex(int index) {
+    return new EncoderSim(index);
   }
 
   public CallbackStore registerInitializedCallback(NotifyCallback callback, boolean initialNotify) {
