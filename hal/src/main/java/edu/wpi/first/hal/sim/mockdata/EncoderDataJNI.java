@@ -57,4 +57,5 @@ public class EncoderDataJNI extends JNIWrapper {
   public static native double getRate(int index);
 
   public static native void resetData(int index);
+  public static native int findEncoderForChannel(int channel);
 }
