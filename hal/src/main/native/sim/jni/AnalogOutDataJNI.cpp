@@ -125,4 +125,16 @@ Java_edu_wpi_first_hal_sim_mockdata_AnalogOutDataJNI_resetData
   HALSIM_ResetAnalogOutData(index);
 }
 
+/*
+ * Class:     edu_wpi_first_hal_sim_mockdata_AnalogOutDataJNI
+ * Method:    findEncoderForChannel
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL
+Java_edu_wpi_first_hal_sim_mockdata_AnalogOutDataJNI_findAnalogOutForChannel
+  (JNIEnv*, jclass, jint channel)
+{
+  return HALSIM_FindAnalogOutForChannel(channel);
+}
+
 }  // extern "C"

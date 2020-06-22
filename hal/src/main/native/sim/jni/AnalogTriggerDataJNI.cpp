@@ -178,4 +178,16 @@ Java_edu_wpi_first_hal_sim_mockdata_AnalogTriggerDataJNI_resetData
   HALSIM_ResetAnalogTriggerData(index);
 }
 
+/*
+ * Class:     edu_wpi_first_hal_sim_mockdata_AnalogTriggerDataJNI
+ * Method:    findAnalogTriggerForChannel
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL
+    Java_edu_wpi_first_hal_sim_mockdata_AnalogTrigger_findAnalogTriggerForChannel
+    (JNIEnv*, jclass, jint channel)
+{
+return HALSIM_FindAnalogTriggerForChannel(channel);
+}
+
 }  // extern "C"

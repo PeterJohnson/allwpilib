@@ -26,6 +26,14 @@ void AnalogOutData::ResetData() {
 }
 
 extern "C" {
+
+int32_t HALSIM_FindAnalogOutForChannel(int32_t channel) {
+  for (int i = 0; i < kNumAnalogOutputs; ++i) {
+    if (!SimAnalogOutData[i].initialized) return i;
+  }
+  return -1;
+}
+
 void HALSIM_ResetAnalogOutData(int32_t index) {
   SimAnalogOutData[index].ResetData();
 }

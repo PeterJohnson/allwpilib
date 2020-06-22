@@ -27,4 +27,6 @@ public class AnalogTriggerDataJNI extends JNIWrapper {
   public static native void setTriggerUpperBound(int index, double triggerUpperBound);
 
   public static native void resetData(int index);
+
+  public static native int findAnalogTriggerDataForChannel(int channel);  
 }

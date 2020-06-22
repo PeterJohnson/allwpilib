@@ -9,12 +9,30 @@ package edu.wpi.first.wpilibj.simulation;
 
 import edu.wpi.first.hal.sim.NotifyCallback;
 import edu.wpi.first.hal.sim.mockdata.AnalogOutDataJNI;
+import edu.wpi.first.wpilibj.AnalogOutput;
+import java.util.NoSuchElementException;
 
-public class AnalogOutSim {
+public class AnalogOutputSim {
   private final int m_index;
 
-  public AnalogOutSim(int index) {
+  public AnalogOutputSim(AnalogOutput analogOutput) {
+    m_index = AnalogOutDataJNI.findAnalogOutForChannel(analogOutput.getChannel());
+  }
+
+  private AnalogOutputSim(int index) {
     m_index = index;
+  }
+
+  public static AnalogOutputSim createForChannel(int channel) {
+    int index = AnalogOutDataJNI.findAnalogOutForChannel(channel);
+    if (index < 0) {
+      throw new NoSuchElementException("no AnalogOutput found for channel " + channel);
+    }
+    return new AnalogOutputSim(index);
+  }
+
+  public static AnalogOutputSim createForIndex(int index) {
+    return new AnalogOutputSim(index);
   }
 
   public CallbackStore registerVoltageCallback(NotifyCallback callback, boolean initialNotify) {

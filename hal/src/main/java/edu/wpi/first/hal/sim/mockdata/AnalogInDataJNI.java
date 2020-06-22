@@ -57,4 +57,5 @@ public class AnalogInDataJNI extends JNIWrapper {
   public static native void setAccumulatorDeadband(int index, int AccumulatorDeadband);
 
   public static native void resetData(int index);
+  public static native int findAnalogInForChannel(int channel);
 }

@@ -55,7 +55,7 @@ class AnalogOutput : public ErrorBase,
   /**
    * Get the channel of this AnalogOutput.
    */
-  int GetChannel();
+  int GetChannel() const;
 
   void InitSendable(SendableBuilder& builder) override;
 

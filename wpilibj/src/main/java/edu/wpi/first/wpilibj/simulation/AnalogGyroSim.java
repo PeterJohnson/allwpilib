@@ -9,12 +9,13 @@ package edu.wpi.first.wpilibj.simulation;
 
 import edu.wpi.first.hal.sim.NotifyCallback;
 import edu.wpi.first.hal.sim.mockdata.AnalogGyroDataJNI;
+import edu.wpi.first.wpilibj.AnalogGyro;
 
 public class AnalogGyroSim {
   private final int m_index;
 
-  public AnalogGyroSim(int index) {
-    m_index = index;
+  public AnalogGyroSim() {
+    m_index = 0;
   }
 
   public CallbackStore registerAngleCallback(NotifyCallback callback, boolean initialNotify) {

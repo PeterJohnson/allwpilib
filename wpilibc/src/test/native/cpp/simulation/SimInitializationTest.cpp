@@ -7,10 +7,10 @@
 
 #include <hal/HAL.h>
 
-#include "frc/simulation/AccelerometerSim.h"
+#include "frc/simulation/BuiltInAccelerometerSim.h"
 #include "frc/simulation/AnalogGyroSim.h"
-#include "frc/simulation/AnalogInSim.h"
-#include "frc/simulation/AnalogOutSim.h"
+#include "frc/simulation/AnalogInputSim.h"
+#include "frc/simulation/AnalogOutputSim.h"
 #include "frc/simulation/AnalogTriggerSim.h"
 #include "frc/simulation/DIOSim.h"
 #include "frc/simulation/DigitalPWMSim.h"
@@ -28,11 +28,14 @@ using namespace frc::sim;
 
 TEST(SimInitializationTests, TestAllInitialize) {
   HAL_Initialize(500, 0);
-  AccelerometerSim acsim{0};
-  AnalogGyroSim agsim{0};
-  AnalogInSim aisim{0};
-  AnalogOutSim aosim{0};
-  AnalogTriggerSim atsim{0};
+  BuiltInAccelerometerSim biacsim{};
+  AnalogGyroSim agsim{};
+  AnalogInputSim aisim = AnalogInputSim::CreateForIndex(0);
+  (void)aisim;
+  AnalogOutputSim aosim = AnalogOutputSim::CreateForIndex(0);
+  (void)aosim;
+  AnalogTriggerSim atsim = AnalogTriggerSim::CreateForIndex(0);
+  (void)atsim;
   DigitalPWMSim dpsim{0};
   DIOSim diosim{0};
   DriverStationSim dssim;

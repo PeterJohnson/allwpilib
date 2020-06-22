@@ -12,7 +12,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 
 import edu.wpi.first.hal.HAL;
-import edu.wpi.first.hal.sim.DriverStationSim;
+import edu.wpi.first.wpilibj.simulation.DriverStationSim;
 
 public final class MockHardwareExtension implements BeforeAllCallback {
   private static ExtensionContext getRoot(ExtensionContext context) {

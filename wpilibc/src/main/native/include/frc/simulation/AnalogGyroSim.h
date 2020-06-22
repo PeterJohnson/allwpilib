@@ -18,7 +18,7 @@ namespace frc {
 namespace sim {
 class AnalogGyroSim {
  public:
-  explicit AnalogGyroSim(int index) { m_index = index; }
+  explicit AnalogGyroSim() { m_index = 0; }
 
   std::unique_ptr<CallbackStore> RegisterAngleCallback(NotifyCallback callback,
                                                        bool initialNotify) {

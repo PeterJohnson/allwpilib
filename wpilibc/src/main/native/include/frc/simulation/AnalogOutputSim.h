@@ -13,12 +13,22 @@
 #include <mockdata/AnalogOutData.h>
 
 #include "CallbackStore.h"
+#include "frc/AnalogOutput.h"
 
 namespace frc {
 namespace sim {
-class AnalogOutSim {
+class AnalogOutputSim {
  public:
-  explicit AnalogOutSim(int index) { m_index = index; }
+  explicit AnalogOutputSim(const AnalogOutput& analogOutput)
+      : m_index(analogOutput.GetChannel()) {}
+
+  static AnalogOutputSim CreateForChannel(int channel) {
+    return AnalogOutputSim{HALSIM_FindAnalogOutForChannel(channel)};
+  }
+
+  static AnalogOutputSim CreateForIndex(int index) {
+    return AnalogOutputSim{index};
+  }
 
   std::unique_ptr<CallbackStore> RegisterVoltageCallback(
       NotifyCallback callback, bool initialNotify) {
@@ -55,6 +65,8 @@ class AnalogOutSim {
   void ResetData() { HALSIM_ResetAnalogOutData(m_index); }
 
  private:
+  explicit AnalogOutputSim(int index) : m_index(index) {}
+
   int m_index;
 };
 }  // namespace sim

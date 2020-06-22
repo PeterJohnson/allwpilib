@@ -28,6 +28,13 @@ void AnalogTriggerData::ResetData() {
 }
 
 extern "C" {
+int32_t HALSIM_FindAnalogTriggerForChannel(int32_t channel) {
+  for (int i = 0; i < kNumAnalogTriggers; ++i) {
+    if (!SimAnalogTriggerData[i].initialized) return i;
+  }
+  return -1;
+}
+
 void HALSIM_ResetAnalogTriggerData(int32_t index) {
   SimAnalogTriggerData[index].ResetData();
 }

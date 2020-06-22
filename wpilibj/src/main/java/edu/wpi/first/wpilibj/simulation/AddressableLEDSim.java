@@ -10,12 +10,13 @@ package edu.wpi.first.wpilibj.simulation;
 import edu.wpi.first.hal.sim.ConstBufferCallback;
 import edu.wpi.first.hal.sim.NotifyCallback;
 import edu.wpi.first.hal.sim.mockdata.AddressableLEDDataJNI;
+import edu.wpi.first.wpilibj.AddressableLED;
 
 public class AddressableLEDSim {
   private final int m_index;
 
-  public AddressableLEDSim(int index) {
-    m_index = index;
+  public AddressableLEDSim() {
+    m_index = 0;
   }
 
   public CallbackStore registerInitializedCallback(NotifyCallback callback, boolean initialNotify) {

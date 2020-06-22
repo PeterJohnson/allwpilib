@@ -5,8 +5,7 @@
 /* the project.                                                               */
 /*----------------------------------------------------------------------------*/
 
-#include "frc/simulation/AccelerometerSim.h"
-
+#include "frc/simulation/BuiltInAccelerometerSim.h"
 #include <hal/Accelerometer.h>
 #include <hal/HAL.h>
 
@@ -17,7 +16,7 @@ using namespace frc::sim;
 TEST(AcclerometerSimTests, TestActiveCallback) {
   HAL_Initialize(500, 0);
 
-  AccelerometerSim sim{0};
+  BuiltInAccelerometerSim sim{};
 
   sim.ResetData();
 

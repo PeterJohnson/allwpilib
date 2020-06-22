@@ -13,12 +13,22 @@
 #include <mockdata/AnalogInData.h>
 
 #include "CallbackStore.h"
+#include "frc/AnalogInput.h"
 
 namespace frc {
 namespace sim {
-class AnalogInSim {
+class AnalogInputSim {
  public:
-  explicit AnalogInSim(int index) { m_index = index; }
+  explicit AnalogInputSim(const AnalogInput& analogInput)
+      : m_index(analogInput.GetChannel()) {}
+
+  static AnalogInputSim CreateForChannel(int channel) {
+    return AnalogInputSim{HALSIM_FindAnalogInForChannel(channel)};
+  }
+
+  static AnalogInputSim CreateForIndex(int index) {
+    return AnalogInputSim{index};
+  }
 
   std::unique_ptr<CallbackStore> RegisterInitializedCallback(
       NotifyCallback callback, bool initialNotify) {
@@ -172,6 +182,8 @@ class AnalogInSim {
   void ResetData() { HALSIM_ResetAnalogInData(m_index); }
 
  private:
+  explicit AnalogInputSim(int index) : m_index(index) {}
+ 
   int m_index;
 };
 }  // namespace sim

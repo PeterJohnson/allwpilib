@@ -13,13 +13,13 @@
 #include <mockdata/AccelerometerData.h>
 
 #include "CallbackStore.h"
+#include "frc/BuiltInAccelerometer.h"
 
 namespace frc {
 namespace sim {
-class AccelerometerSim {
+class BuiltInAccelerometerSim {
  public:
-  explicit AccelerometerSim(int index) { m_index = index; }
-
+  explicit BuiltInAccelerometerSim() { m_index = 0; }
   std::unique_ptr<CallbackStore> RegisterActiveCallback(NotifyCallback callback,
                                                         bool initialNotify) {
     auto store = std::make_unique<CallbackStore>(

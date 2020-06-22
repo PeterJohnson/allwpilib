@@ -9,11 +9,12 @@ package edu.wpi.first.wpilibj.simulation;
 
 import edu.wpi.first.hal.sim.NotifyCallback;
 import edu.wpi.first.hal.sim.mockdata.AccelerometerDataJNI;
+import edu.wpi.first.wpilibj.BuiltInAccelerometer;
 
-public class AccelerometerSim {
+public class BuiltInAccelerometerSim {
   private final int m_index;
 
-  public AccelerometerSim() {
+  public BuiltInAccelerometerSim() {
     m_index = 0;
   }
 

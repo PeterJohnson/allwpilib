@@ -14,6 +14,8 @@
 extern "C" {
 #endif
 
+int32_t HALSIM_FindAnalogOutForChannel(int32_t channel);
+
 void HALSIM_ResetAnalogOutData(int32_t index);
 int32_t HALSIM_RegisterAnalogOutVoltageCallback(int32_t index,
                                                 HAL_NotifyCallback callback,

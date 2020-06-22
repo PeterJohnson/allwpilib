@@ -9,12 +9,30 @@ package edu.wpi.first.wpilibj.simulation;
 
 import edu.wpi.first.hal.sim.NotifyCallback;
 import edu.wpi.first.hal.sim.mockdata.AnalogTriggerDataJNI;
+import edu.wpi.first.wpilibj.AnalogTrigger;
+import java.util.NoSuchElementException;
 
 public class AnalogTriggerSim {
   private final int m_index;
 
-  public AnalogTriggerSim(int index) {
+  public AnalogTriggerSim(AnalogTrigger analogTrigger) {
+    m_index = analogTrigger.getIndex();
+  }
+
+  private AnalogTriggerSim(int index) {
     m_index = index;
+  }
+
+  public static AnalogTriggerSim createForChannel(int channel) {
+    int index = AnalogTriggerDataJNI.findAnalogTriggerDataForChannel(channel);
+    if (index < 0) {
+      throw new NoSuchElementException("no encoder found for channel " + channel);
+    }
+    return new AnalogTriggerSim(index);
+  }
+
+  public static AnalogTriggerSim createForIndex(int index) {
+    return new AnalogTriggerSim(index);
   }
 
   public CallbackStore registerInitializedCallback(NotifyCallback callback, boolean initialNotify) {

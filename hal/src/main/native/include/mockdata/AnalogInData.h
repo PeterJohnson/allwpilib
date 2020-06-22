@@ -13,7 +13,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+int32_t HALSIM_FindAnalogInForChannel(int32_t channel);
 void HALSIM_ResetAnalogInData(int32_t index);
 int32_t HALSIM_RegisterAnalogInInitializedCallback(int32_t index,
                                                    HAL_NotifyCallback callback,

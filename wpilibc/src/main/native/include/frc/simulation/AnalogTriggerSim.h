@@ -13,12 +13,23 @@
 #include <mockdata/AnalogTriggerData.h>
 
 #include "CallbackStore.h"
+#include "frc/AnalogTrigger.h"
 
 namespace frc {
 namespace sim {
 class AnalogTriggerSim {
  public:
-  explicit AnalogTriggerSim(int index) { m_index = index; }
+  explicit AnalogTriggerSim(const AnalogTrigger& analogTrigger) 
+    : m_index(analogTrigger.GetIndex()) {}
+  
+
+  static AnalogTriggerSim CreateForIndex(int index) {
+    return AnalogTriggerSim{index};
+  }
+
+  static AnalogTriggerSim CreateForChannel(int channel) {
+    return AnalogTriggerSim{HALSIM_FindAnalogTriggerForChannel(channel)};
+  }
 
   std::unique_ptr<CallbackStore> RegisterInitializedCallback(
       NotifyCallback callback, bool initialNotify) {
@@ -76,6 +87,8 @@ class AnalogTriggerSim {
   void ResetData() { HALSIM_ResetAnalogTriggerData(m_index); }
 
  private:
+  explicit AnalogTriggerSim(int index) : m_index(index) {}
+
   int m_index;
 };
 }  // namespace sim
