@@ -9,12 +9,30 @@ package edu.wpi.first.wpilibj.simulation;
 
 import edu.wpi.first.hal.sim.NotifyCallback;
 import edu.wpi.first.hal.sim.mockdata.DigitalPWMDataJNI;
+import edu.wpi.first.wpilibj.PWM;
+import java.util.NoSuchElementException;
 
 public class DigitalPWMSim {
   private final int m_index;
 
-  public DigitalPWMSim(int index) {
+  public DigitalPWMSim(PWM pwm) {
+    m_index = pwm.getChannel();
+  }
+
+  private DigitalPWMSim(int index) {
     m_index = index;
+  }
+
+  public static DigitalPWMSim createForChannel(int channel) {
+    int index = DigitalPWMDataJNI.findDigitalPWMForChannel(channel);
+    if (index < 0) {
+      throw new NoSuchElementException("no encoder found for channel " + channel);
+    }
+    return new DigitalPWMSim(index);
+  }
+
+  public static DigitalPWMSim createForIndex(int index) {
+    return new DigitalPWMSim(index);
   }
 
   public CallbackStore registerInitializedCallback(NotifyCallback callback, boolean initialNotify) {

@@ -27,6 +27,13 @@ void DigitalPWMData::ResetData() {
 }
 
 extern "C" {
+int32_t HALSIM_FindDigitalPWMForChannel(int32_t channel) {
+  for (int i = 0; i < kNumDigitalPWMOutputs; ++i) {
+    if (!SimDigitalPWMData[i].initialized) return i;
+  }
+  return -1;
+}
+
 void HALSIM_ResetDigitalPWMData(int32_t index) {
   SimDigitalPWMData[index].ResetData();
 }

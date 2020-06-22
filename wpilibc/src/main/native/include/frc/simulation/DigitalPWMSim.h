@@ -13,12 +13,22 @@
 #include <mockdata/DigitalPWMData.h>
 
 #include "CallbackStore.h"
+#include "frc/PWM.h"
 
 namespace frc {
 namespace sim {
 class DigitalPWMSim {
  public:
-  explicit DigitalPWMSim(int index) { m_index = index; }
+  explicit DigitalPWMSim(const PWM& pwm)
+      : m_index(pwm.GetChannel()) {}
+
+  static DigitalPWMSim CreateForChannel(int channel) {
+    return DigitalPWMSim{HALSIM_FindDigitalPWMForChannel(channel)};
+  }
+
+  static DigitalPWMSim CreateForIndex(int index) {
+    return DigitalPWMSim{index};
+  }
 
   std::unique_ptr<CallbackStore> RegisterInitializedCallback(
       NotifyCallback callback, bool initialNotify) {
@@ -68,6 +78,8 @@ class DigitalPWMSim {
   void ResetData() { HALSIM_ResetDigitalPWMData(m_index); }
 
  private:
+  explicit DigitalPWMSim(int index) : m_index(index) {}
+
   int m_index;
 };
 }  // namespace sim

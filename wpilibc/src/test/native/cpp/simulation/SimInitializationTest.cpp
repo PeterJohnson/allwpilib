@@ -36,7 +36,8 @@ TEST(SimInitializationTests, TestAllInitialize) {
   (void)aosim;
   AnalogTriggerSim atsim = AnalogTriggerSim::CreateForIndex(0);
   (void)atsim;
-  DigitalPWMSim dpsim{0};
+  DigitalPWMSim dpsim = DigitalPWMSim::CreateForIndex(0);
+  (void)dpsim;
   DIOSim diosim{0};
   DriverStationSim dssim;
   (void)dssim;
