@@ -13,6 +13,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 int32_t HALSIM_FindRelayForChannel(int32_t channel);
 
 void HALSIM_ResetRelayData(int32_t index);

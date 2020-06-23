@@ -32,5 +32,6 @@ public class RelayDataJNI extends JNIWrapper {
   public static native void setReverse(int index, boolean reverse);
 
   public static native void resetData(int index);
+  
   public static native int findRelayForChannel(int channel);
 }

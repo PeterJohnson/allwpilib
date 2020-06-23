@@ -22,5 +22,6 @@ public class AnalogOutDataJNI extends JNIWrapper {
   public static native void setInitialized(int index, boolean initialized);
 
   public static native void resetData(int index);
+  
   public static native int findAnalogOutForChannel(int channel);
 }

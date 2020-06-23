@@ -30,8 +30,8 @@ using namespace frc::sim;
 
 TEST(SimInitializationTests, TestAllInitialize) {
   HAL_Initialize(500, 0);
-  BuiltInAccelerometerSim biacsim{};
-  AnalogGyroSim agsim{};
+  BuiltInAccelerometerSim biacsim;
+  AnalogGyroSim agsim;
   AnalogInputSim aisim = AnalogInputSim::CreateForIndex(0);
   (void)aisim;
   AnalogOutputSim aosim = AnalogOutputSim::CreateForIndex(0);

@@ -16,7 +16,7 @@ using namespace frc::sim;
 TEST(AcclerometerSimTests, TestActiveCallback) {
   HAL_Initialize(500, 0);
 
-  BuiltInAccelerometerSim sim{};
+  BuiltInAccelerometerSim sim;
 
   sim.ResetData();
 

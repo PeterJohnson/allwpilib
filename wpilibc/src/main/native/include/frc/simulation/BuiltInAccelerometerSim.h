@@ -20,6 +20,7 @@ namespace sim {
 class BuiltInAccelerometerSim {
  public:
   explicit BuiltInAccelerometerSim() { m_index = 0; }
+  
   std::unique_ptr<CallbackStore> RegisterActiveCallback(NotifyCallback callback,
                                                         bool initialNotify) {
     auto store = std::make_unique<CallbackStore>(

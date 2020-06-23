@@ -27,5 +27,6 @@ public class DutyCycleDataJNI extends JNIWrapper {
   public static native void setOutput(int index, double output);
 
   public static native void resetData(int index);
+  
   public static native int findDutyCycleForChannel(int channel);
 }
