@@ -9,12 +9,30 @@ package edu.wpi.first.wpilibj.simulation;
 
 import edu.wpi.first.hal.sim.NotifyCallback;
 import edu.wpi.first.hal.sim.mockdata.DutyCycleDataJNI;
+import edu.wpi.first.wpilibj.DutyCycle;
+import java.util.NoSuchElementException;
 
 public class DutyCycleSim {
   private final int m_index;
 
+  public DutyCycleSim(DutyCycle dutyCycle) {
+    m_index = dutyCycle.getFPGAIndex();
+  }
+
   public DutyCycleSim(int index) {
     m_index = index;
+  }
+
+  public static DutyCycleSim createForChannel(int channel) {
+    int index = DutyCycleDataJNI.findDutyCycleForChannel(channel);
+    if (index < 0) {
+      throw new NoSuchElementException("no DutyCycle found for channel " + channel);
+    }
+    return new DutyCycleSim(index);
+  }
+
+  public static DutyCycleSim createForIndex(int index) {
+    return new DutyCycleSim(index);
   }
 
   public CallbackStore registerInitializedCallback(NotifyCallback callback, boolean initialNotify) {
