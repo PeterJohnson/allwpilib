@@ -22,6 +22,7 @@
 #include "frc/simulation/RelaySim.h"
 #include "frc/simulation/RoboRioSim.h"
 #include "frc/simulation/SPIAccelerometerSim.h"
+#include "frc/simulation/DutyCycleSim.h"
 #include "gtest/gtest.h"
 
 using namespace frc::sim;
@@ -49,4 +50,6 @@ TEST(SimInitializationTests, TestAllInitialize) {
   RelaySim rsim{0};
   RoboRioSim rrsim{0};
   SPIAccelerometerSim sasim{0};
+  DutyCycleSim dcsim = DutyCycleSim::CreateForIndex(0);
+  (void)dcsim;
 }

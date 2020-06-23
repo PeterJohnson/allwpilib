@@ -30,6 +30,13 @@ void DutyCycleData::ResetData() {
 }
 
 extern "C" {
+int32_t HALSIM_FindDutyCycleForChannel(int32_t channel) {
+  for (int i = 0; i < kNumDutyCycles; ++i) {
+    if (!SimDutyCycleData[i].initialized) return i;
+  }
+  return -1;
+}
+  
 void HALSIM_ResetDutyCycleData(int32_t index) {
   SimDutyCycleData[index].ResetData();
 }

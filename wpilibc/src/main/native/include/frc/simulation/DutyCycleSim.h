@@ -13,12 +13,22 @@
 #include <mockdata/DutyCycleData.h>
 
 #include "CallbackStore.h"
+#include "frc/DutyCycle.h"
 
 namespace frc {
 namespace sim {
 class DutyCycleSim {
  public:
-  explicit DutyCycleSim(int index) { m_index = index; }
+  explicit DutyCycleSim(const DutyCycle& dutyCycle)
+      : m_index(dutyCycle.GetFPGAIndex()) {}
+
+  static DutyCycleSim CreateForChannel(int channel) {
+    return DutyCycleSim{HALSIM_FindDutyCycleForChannel(channel)};
+  }
+
+  static DutyCycleSim CreateForIndex(int index) {
+    return DutyCycleSim{index};
+  }
 
   std::unique_ptr<CallbackStore> RegisterInitializedCallback(
       NotifyCallback callback, bool initialNotify) {
@@ -66,6 +76,8 @@ class DutyCycleSim {
   void ResetData() { HALSIM_ResetDutyCycleData(m_index); }
 
  private:
+  explicit DutyCycleSim(int index) : m_index(index) {}
+
   int m_index;
 };
 }  // namespace sim
