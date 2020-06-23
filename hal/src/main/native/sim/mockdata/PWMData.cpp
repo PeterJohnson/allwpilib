@@ -30,6 +30,13 @@ void PWMData::ResetData() {
 }
 
 extern "C" {
+int32_t HALSIM_FindPWMForChannel(int32_t channel) {
+  for (int i = 0; i < kNumPWMChannels; ++i) {
+    if (!SimPWMData[i].initialized) return i;
+  }
+  return -1;
+}
+
 void HALSIM_ResetPWMData(int32_t index) { SimPWMData[index].ResetData(); }
 
 #define DEFINE_CAPI(TYPE, CAPINAME, LOWERNAME)                          \

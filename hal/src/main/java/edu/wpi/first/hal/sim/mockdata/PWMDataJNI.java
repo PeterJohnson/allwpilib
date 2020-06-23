@@ -42,4 +42,6 @@ public class PWMDataJNI extends JNIWrapper {
   public static native void setZeroLatch(int index, boolean zeroLatch);
 
   public static native void resetData(int index);
+
+  public static native int findPWMForChannel(int channel);
 }

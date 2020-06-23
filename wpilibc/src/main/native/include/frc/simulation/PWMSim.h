@@ -13,12 +13,22 @@
 #include <mockdata/PWMData.h>
 
 #include "CallbackStore.h"
+#include "frc/PWM.h"
 
 namespace frc {
 namespace sim {
 class PWMSim {
  public:
-  explicit PWMSim(int index) { m_index = index; }
+  explicit PWMSim(const PWM& pwm)
+      : m_index(pwm.GetChannel()) {}
+
+  static PWMSim CreateForChannel(int channel) {
+    return PWMSim{HALSIM_FindPWMForChannel(channel)};
+  }
+
+  static PWMSim CreateForIndex(int index) {
+    return PWMSim{index};
+  }
 
   std::unique_ptr<CallbackStore> RegisterInitializedCallback(
       NotifyCallback callback, bool initialNotify) {
@@ -109,6 +119,8 @@ class PWMSim {
   void ResetData() { HALSIM_ResetPWMData(m_index); }
 
  private:
+  explicit PWMSim(int index) : m_index(index) {}
+  
   int m_index;
 };
 }  // namespace sim

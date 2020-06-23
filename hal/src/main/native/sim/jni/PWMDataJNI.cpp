@@ -324,4 +324,16 @@ Java_edu_wpi_first_hal_sim_mockdata_PWMDataJNI_resetData
   HALSIM_ResetPWMData(index);
 }
 
+/*
+ * Class:     edu_wpi_first_hal_sim_mockdata_PWMDataJNI
+ * Method:    findPWMForChannel
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL
+Java_edu_wpi_first_hal_sim_mockdata_PWMDataJNI_findPWMForChannel
+  (JNIEnv*, jclass, jint channel)
+{
+  return HALSIM_FindPWMForChannel(channel);
+}
+
 }  // extern "C"

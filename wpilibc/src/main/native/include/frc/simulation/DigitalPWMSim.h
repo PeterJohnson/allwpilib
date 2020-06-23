@@ -13,14 +13,14 @@
 #include <mockdata/DigitalPWMData.h>
 
 #include "CallbackStore.h"
-#include "frc/PWM.h"
+#include "frc/DigitalOutput.h"
 
 namespace frc {
 namespace sim {
 class DigitalPWMSim {
  public:
-  explicit DigitalPWMSim(const PWM& pwm)
-      : m_index(pwm.GetChannel()) {}
+  explicit DigitalPWMSim(const DigitalOutput& digitalOutput)
+      : m_index(digitalOutput.GetChannel()) {}
 
   static DigitalPWMSim CreateForChannel(int channel) {
     return DigitalPWMSim{HALSIM_FindDigitalPWMForChannel(channel)};

@@ -14,6 +14,8 @@
 extern "C" {
 #endif
 
+int32_t HALSIM_FindPWMForChannel(int32_t channel);
+
 void HALSIM_ResetPWMData(int32_t index);
 int32_t HALSIM_RegisterPWMInitializedCallback(int32_t index,
                                               HAL_NotifyCallback callback,

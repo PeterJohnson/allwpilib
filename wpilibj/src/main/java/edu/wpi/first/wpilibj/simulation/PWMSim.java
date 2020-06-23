@@ -9,12 +9,30 @@ package edu.wpi.first.wpilibj.simulation;
 
 import edu.wpi.first.hal.sim.NotifyCallback;
 import edu.wpi.first.hal.sim.mockdata.PWMDataJNI;
+import edu.wpi.first.wpilibj.PWM;
+import java.util.NoSuchElementException;
 
 public class PWMSim {
   private final int m_index;
 
+  public PWMSim(PWM pwm) {
+    m_index = pwm.getChannel();
+  }
+
   public PWMSim(int index) {
     m_index = index;
+  }
+
+  public static PWMSim createForChannel(int channel) {
+    int index = PWMDataJNI.findPWMForChannel(channel);
+    if (index < 0) {
+      throw new NoSuchElementException("no PWM found for channel " + channel);
+    }
+    return new PWMSim(index);
+  }
+
+  public static PWMSim createForIndex(int index) {
+    return new PWMSim(index);
   }
 
   public CallbackStore registerInitializedCallback(NotifyCallback callback, boolean initialNotify) {

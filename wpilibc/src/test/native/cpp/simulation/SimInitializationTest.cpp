@@ -47,7 +47,8 @@ TEST(SimInitializationTests, TestAllInitialize) {
   (void)esim;
   PCMSim pcmsim{0};
   PDPSim pdpsim{0};
-  PWMSim pwmsim{0};
+  PWMSim pwmsim = PWMSim::CreateForIndex(0);
+  (void)pwmsim;
   RelaySim rsim = RelaySim::CreateForIndex(0);
   (void)rsim;
   RoboRioSim rrsim{0};
