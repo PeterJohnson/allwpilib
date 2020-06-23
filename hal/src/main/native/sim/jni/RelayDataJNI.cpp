@@ -225,4 +225,16 @@ Java_edu_wpi_first_hal_sim_mockdata_RelayDataJNI_resetData
   HALSIM_ResetRelayData(index);
 }
 
+/*
+ * Class:     edu_wpi_first_hal_sim_mockdata_RelayDataJNI
+ * Method:    findRelayForChannel
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL
+Java_edu_wpi_first_hal_sim_mockdata_RelayDataJNI_findRelayForChannel
+  (JNIEnv*, jclass, jint channel)
+{
+  return HALSIM_FindRelayForChannel(channel);
+}
+
 }  // extern "C"

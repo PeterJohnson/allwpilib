@@ -28,6 +28,14 @@ void RelayData::ResetData() {
 }
 
 extern "C" {
+
+int32_t HALSIM_FindRelayForChannel(int32_t channel) {
+  for (int i = 0; i < kNumRelayHeaders; ++i) {
+    if (!SimRelayData[i].initializedForward) return i;
+  }
+  return -1;
+}
+
 void HALSIM_ResetRelayData(int32_t index) { SimRelayData[index].ResetData(); }
 
 #define DEFINE_CAPI(TYPE, CAPINAME, LOWERNAME)                              \

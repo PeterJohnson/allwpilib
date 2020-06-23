@@ -9,12 +9,31 @@ package edu.wpi.first.wpilibj.simulation;
 
 import edu.wpi.first.hal.sim.NotifyCallback;
 import edu.wpi.first.hal.sim.mockdata.RelayDataJNI;
+import edu.wpi.first.wpilibj.Relay;
+import java.util.NoSuchElementException;
 
 public class RelaySim {
   private final int m_index;
 
+
+  public RelaySim(Relay relay) {
+    m_index = relay.getChannel();
+  }
+  
   public RelaySim(int index) {
     m_index = index;
+  }
+
+  public static RelaySim createForChannel(int channel) {
+    int index = RelayDataJNI.findRelayForChannel(channel);
+    if (index < 0) {
+      throw new NoSuchElementException("no RelaySim found for channel " + channel);
+    }
+    return new RelaySim(index);
+  }
+
+  public static RelaySim createForIndex(int index) {
+    return new RelaySim(index);
   }
 
   public CallbackStore registerInitializedForwardCallback(NotifyCallback callback, boolean initialNotify) {

@@ -13,12 +13,22 @@
 #include <mockdata/RelayData.h>
 
 #include "CallbackStore.h"
+#include "frc/Relay.h"
 
 namespace frc {
 namespace sim {
 class RelaySim {
  public:
-  explicit RelaySim(int index) { m_index = index; }
+  explicit RelaySim(const Relay& relay)
+      : m_index(relay.GetChannel()) {}
+
+  static RelaySim CreateForChannel(int channel) {
+    return RelaySim{HALSIM_FindRelayForChannel(channel)};
+  }
+
+  static RelaySim CreateForIndex(int index) {
+    return RelaySim{index};
+  }
 
   std::unique_ptr<CallbackStore> RegisterInitializedForwardCallback(
       NotifyCallback callback, bool initialNotify) {
@@ -83,6 +93,7 @@ class RelaySim {
   void ResetData() { HALSIM_ResetRelayData(m_index); }
 
  private:
+  explicit RelaySim(int index) : m_index(index) {}
   int m_index;
 };
 }  // namespace sim
