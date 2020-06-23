@@ -15,8 +15,8 @@ import edu.wpi.first.hal.sim.mockdata.I2CDataJNI;
 public class I2CSim {
   private final int m_index;
 
-  public I2CSim() {
-    m_index = 0;
+  public I2CSim(int index) {
+    m_index = index;
   }
 
   public CallbackStore registerInitializedCallback(NotifyCallback callback, boolean initialNotify) {
