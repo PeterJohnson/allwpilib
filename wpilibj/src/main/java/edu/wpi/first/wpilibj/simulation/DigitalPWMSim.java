@@ -9,14 +9,14 @@ package edu.wpi.first.wpilibj.simulation;
 
 import edu.wpi.first.hal.sim.NotifyCallback;
 import edu.wpi.first.hal.sim.mockdata.DigitalPWMDataJNI;
-import edu.wpi.first.wpilibj.PWM;
+import edu.wpi.first.wpilibj.DigitalOutput;
 import java.util.NoSuchElementException;
 
 public class DigitalPWMSim {
   private final int m_index;
 
-  public DigitalPWMSim(PWM pwm) {
-    m_index = pwm.getChannel();
+  public DigitalPWMSim(DigitalOutput digitalOutput) {
+    m_index = digitalOutput.getChannel();
   }
 
   private DigitalPWMSim(int index) {
