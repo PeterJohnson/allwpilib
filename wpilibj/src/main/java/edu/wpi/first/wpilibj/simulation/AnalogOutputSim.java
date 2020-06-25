@@ -16,7 +16,7 @@ public class AnalogOutputSim {
   private final int m_index;
 
   public AnalogOutputSim(AnalogOutput analogOutput) {
-    m_index = AnalogOutDataJNI.findAnalogOutForChannel(analogOutput.getChannel());
+    m_index = analogOutput.getChannel();
   }
 
   private AnalogOutputSim(int index) {
@@ -26,7 +26,7 @@ public class AnalogOutputSim {
   public static AnalogOutputSim createForChannel(int channel) {
     int index = AnalogOutDataJNI.findAnalogOutForChannel(channel);
     if (index < 0) {
-      throw new NoSuchElementException("no AnalogOutput found for channel " + channel);
+      throw new NoSuchElementException("no analog output found for channel " + channel);
     }
     return new AnalogOutputSim(index);
   }

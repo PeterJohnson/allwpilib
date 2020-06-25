@@ -27,7 +27,7 @@ public class RelaySim {
   public static RelaySim createForChannel(int channel) {
     int index = RelayDataJNI.findRelayForChannel(channel);
     if (index < 0) {
-      throw new NoSuchElementException("no RelaySim found for channel " + channel);
+      throw new NoSuchElementException("no relay found for channel " + channel);
     }
     return new RelaySim(index);
   }

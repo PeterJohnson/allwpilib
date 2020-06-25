@@ -10,12 +10,29 @@ package edu.wpi.first.wpilibj.simulation;
 import edu.wpi.first.hal.sim.NotifyCallback;
 import edu.wpi.first.hal.sim.mockdata.AnalogInDataJNI;
 import edu.wpi.first.wpilibj.AnalogInput;
+import java.util.NoSuchElementException;
 
 public class AnalogInputSim {
   private final int m_index;
 
-  public AnalogInputSim() {
-    m_index = 0;
+  public AnalogInputSim(AnalogInput analogInput) {
+    m_index = analogInput.getChannel();
+  }
+
+  public AnalogInputSim(int index) {
+    m_index = index;
+  }
+
+  public static AnalogInputSim createForChannel(int channel) {
+    int index = AnalogInDataJNI.findAnalogInForChannel(channel);
+    if (index < 0) {
+      throw new NoSuchElementException("no analog input found for channel " + channel);
+    }
+    return new AnalogInputSim(index);
+  }
+
+  public static AnalogInputSim createForIndex(int index) {
+    return new AnalogInputSim(index);
   }
 
   public CallbackStore registerInitializedCallback(NotifyCallback callback, boolean initialNotify) {

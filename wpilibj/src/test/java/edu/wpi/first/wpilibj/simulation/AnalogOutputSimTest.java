@@ -37,7 +37,7 @@ class AnalogOutputSimTest {
     AnalogOutput output = new AnalogOutput(0);
     output.setVoltage(0.5);
 
-    AnalogOutputSim outputSim = AnalogOutputSim.createForChannel(0);
+    AnalogOutputSim outputSim = new AnalogOutputSim(output);
 
     DoubleStore store = new DoubleStore();
 

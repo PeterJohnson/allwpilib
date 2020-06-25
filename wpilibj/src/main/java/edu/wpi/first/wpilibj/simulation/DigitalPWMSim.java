@@ -26,7 +26,7 @@ public class DigitalPWMSim {
   public static DigitalPWMSim createForChannel(int channel) {
     int index = DigitalPWMDataJNI.findDigitalPWMForChannel(channel);
     if (index < 0) {
-      throw new NoSuchElementException("no encoder found for channel " + channel);
+      throw new NoSuchElementException("no digital PWM found for channel " + channel);
     }
     return new DigitalPWMSim(index);
   }

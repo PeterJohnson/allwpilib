@@ -26,7 +26,7 @@ public class AnalogTriggerSim {
   public static AnalogTriggerSim createForChannel(int channel) {
     int index = AnalogTriggerDataJNI.findAnalogTriggerDataForChannel(channel);
     if (index < 0) {
-      throw new NoSuchElementException("no encoder found for channel " + channel);
+      throw new NoSuchElementException("no analog trigger found for channel " + channel);
     }
     return new AnalogTriggerSim(index);
   }

@@ -26,7 +26,7 @@ public class DutyCycleSim {
   public static DutyCycleSim createForChannel(int channel) {
     int index = DutyCycleDataJNI.findDutyCycleForChannel(channel);
     if (index < 0) {
-      throw new NoSuchElementException("no DutyCycle found for channel " + channel);
+      throw new NoSuchElementException("no duty cycle found for channel " + channel);
     }
     return new DutyCycleSim(index);
   }
