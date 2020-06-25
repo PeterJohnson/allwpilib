@@ -24,6 +24,7 @@
 #include "frc/simulation/SPIAccelerometerSim.h"
 #include "frc/simulation/DutyCycleSim.h"
 #include "frc/simulation/RelaySim.h"
+#include "frc/simulation/AddressableLEDSim.h"
 #include "gtest/gtest.h"
 
 using namespace frc::sim;
@@ -55,4 +56,5 @@ TEST(SimInitializationTests, TestAllInitialize) {
   SPIAccelerometerSim sasim{0};
   DutyCycleSim dcsim = DutyCycleSim::CreateForIndex(0);
   (void)dcsim;
+  AddressableLEDSim adLED;
 }

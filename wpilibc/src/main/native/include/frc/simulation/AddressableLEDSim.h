@@ -10,10 +10,11 @@
 #include <memory>
 #include <utility>
 
-#include <mockdata/AnalogGyroData.h>
+#include <mockdata/AddressableLEDData.h>
 #include <wpi/ArrayRef.h>
 
 #include "CallbackStore.h"
+// #include "frc/AddressableLEDData.h"
 
 namespace frc {
 namespace sim {
@@ -25,8 +26,8 @@ class AddressableLEDSim {
       NotifyCallback callback, bool initialNotify) {
     auto store = std::make_unique<CallbackStore>(
         m_index, -1, callback,
-        &HALSIM_RegisterAddressableLEDInitializedCallback);
-    store->SetUid(HALSIM_RegisterAddressableLEDCallback(
+        &HALSIM_CancelAddressableLEDInitializedCallback);
+    store->SetUid(HALSIM_RegisterAddressableLEDInitializedCallback(
         m_index, &CallbackStoreThunk, store.get(), initialNotify));
     return store;
   }
@@ -43,8 +44,8 @@ class AddressableLEDSim {
       NotifyCallback callback, bool initialNotify) {
     auto store = std::make_unique<CallbackStore>(
         m_index, -1, callback,
-        &HALSIM_RegisterAddressableLEDOutputPortCallback);
-    store->SetUid(HALSIM_RegisterAddressableLEDCallback(
+        &HALSIM_CancelAddressableLEDOutputPortCallback);
+    store->SetUid(HALSIM_RegisterAddressableLEDOutputPortCallback(
         m_index, &CallbackStoreThunk, store.get(), initialNotify));
     return store;
   }
@@ -60,8 +61,8 @@ class AddressableLEDSim {
   std::unique_ptr<CallbackStore> RegisterLengthCallback(NotifyCallback callback,
                                                         bool initialNotify) {
     auto store = std::make_unique<CallbackStore>(
-        m_index, -1, callback, &HALSIM_RegisterAddressableLEDLengthCallback);
-    store->SetUid(HALSIM_RegisterAddressableLEDCallback(
+        m_index, -1, callback, &HALSIM_CancelAddressableLEDLengthCallback);
+    store->SetUid(HALSIM_RegisterAddressableLEDLengthCallback(
         m_index, &CallbackStoreThunk, store.get(), initialNotify));
     return store;
   }
@@ -75,8 +76,8 @@ class AddressableLEDSim {
   std::unique_ptr<CallbackStore> RegisterRunningCallback(
       NotifyCallback callback, bool initialNotify) {
     auto store = std::make_unique<CallbackStore>(
-        m_index, -1, callback, &HALSIM_RegisterAddressableLEDRunningCallback);
-    store->SetUid(HALSIM_RegisterAddressableLEDCallback(
+        m_index, -1, callback, &HALSIM_CancelAddressableLEDRunningCallback);
+    store->SetUid(HALSIM_RegisterAddressableLEDRunningCallback(
         m_index, &CallbackStoreThunk, store.get(), initialNotify));
     return store;
   }
@@ -90,27 +91,17 @@ class AddressableLEDSim {
   std::unique_ptr<CallbackStore> RegisterDataCallback(NotifyCallback callback,
                                                       bool initialNotify) {
     auto store = std::make_unique<CallbackStore>(
-        m_index, -1, callback, &HALSIM_RegisterAddressableLEDRunningCallback);
-    store->SetUid(HALSIM_RegisterAddressableLEDCallback(
-        m_index, &CallbackStoreThunk, store.get(), initialNotify));
+        m_index, -1, callback, &HALSIM_CancelAddressableLEDDataCallback);
+    store->SetUid(HALSIM_RegisterAddressableLEDDataCallback(
+        m_index, &CallbackStoreThunk, store.get()));
     return store;
   }
 
   int GetData() const { return HALSIM_GetAddressableLEDData(m_index); }
-  // TODO: Fix bool to be java byte[]
-  void SetData(bool data) { HALSIM_SetAddressableLEDData(m_index, data); }
 
-  std::unique_ptr<CallbackStore> RegisterDataCallback(NotifyCallback callback,
-                                                      bool initialNotify) {
-    auto store = std::make_unique<CallbackStore>(
-        m_index, -1, callback, &HALSIM_RegisterAddressableLEDRunningCallback);
-    store->SetUid(HALSIM_RegisterAddressableLEDCallback(
-        m_index, &CallbackStoreThunk, store.get(), initialNotify));
-    return store;
-  }
-
-  int GetData() const { return HALSIM_GetAddressableLEDData(m_index); }
-  void SetData(wpi::ArrayRef data) { HALSIM_SetAddressableLEDData(m_index, data); }
+  void SetData(struct HAL_AddressableLEDData* data) { HALSIM_SetAddressableLEDData(m_index, data); }
+private:
+  int m_index;
 };
 }  // namespace sim
 }  // namespace frc
