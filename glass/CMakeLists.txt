@@ -1,6 +1,7 @@
 project(glass)
 
 include(CompileWarnings)
+include(GenResources)
 include(LinkMacOSGUI)
 
 #
@@ -49,9 +50,11 @@ install(DIRECTORY src/libnt/native/include/ DESTINATION "${include_dest}/glass")
 # glass application
 #
 
+GENERATE_RESOURCES(src/app/native/resources generated/app/cpp GLASS glass glass_resources_src)
+
 file(GLOB glass_src src/app/native/cpp/*.cpp)
 
-add_executable(glass ${glass_src})
+add_executable(glass ${glass_src} ${glass_resources_src})
 wpilib_link_macos_gui(glass)
 target_link_libraries(glass libglassnt libglass)
 if (WIN32)
