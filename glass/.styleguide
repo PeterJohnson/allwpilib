@@ -1,3 +1,4 @@
 generatedFileExclude {
   src/app/native/resources/
+  src/app/native/win/glass.ico
 }

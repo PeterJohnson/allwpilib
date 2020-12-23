@@ -54,7 +54,11 @@ GENERATE_RESOURCES(src/app/native/resources generated/app/cpp GLASS glass glass_
 
 file(GLOB glass_src src/app/native/cpp/*.cpp)
 
-add_executable(glass ${glass_src} ${glass_resources_src})
+if (WIN32)
+    set(glass_rc src/app/native/win/glass.rc)
+endif()
+
+add_executable(glass ${glass_src} ${glass_resources_src} ${glass_rc})
 wpilib_link_macos_gui(glass)
 target_link_libraries(glass libglassnt libglass)
 if (WIN32)
