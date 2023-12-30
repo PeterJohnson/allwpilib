@@ -17,9 +17,6 @@
 #include <wpi/StringExtras.h>
 #include <wpi/fs.h>
 #include <wpi/timestamp.h>
-#include <wpi/SmallVector.h>
-#include <wpi/SpanExtras.h>
-#include <wpi/StringExtras.h>
 
 using namespace sysid;
 
@@ -193,62 +190,3 @@ void LogLoader::DisplayEntryTree(const std::vector<EntryTreeNode>& tree) {
     }
   }
 }
-
-  // Display tree of entries
-  if (m_entryTree.empty()) {
-    RebuildEntryTree();
-  }
-
-  DisplayEntryTree(m_entryTree);
-}
-
-void LogLoader::RebuildEntryTree() {
-  wpi::SmallVector<std::string_view, 16> parts;
-  m_reader->ForEachEntryName([&](const glass::DataLogReaderThread::Entry&
-                                     entry) {
-    parts.clear();
-    // split on first : if one is present
-    auto [prefix, mainpart] = wpi::split(entry.name, ':');
-    if (mainpart.empty() || wpi::contains(prefix, '/')) {
-      mainpart = entry.name;
-    } else {
-      parts.emplace_back(prefix);
-    }
-    wpi::split(mainpart, parts, '/', -1, false);
-
-    // ignore a raw "/" key
-    if (parts.empty()) {
-      return;
-    }
-
-    // get to leaf
-    auto nodes = &m_entryTree;
-    for (auto part : wpi::drop_back(std::span{parts.begin(), parts.end()})) {
-      auto it =
-          std::find_if(nodes->begin(), nodes->end(),
-                       [&](const auto& node) { return node.name == part; });
-      if (it == nodes->end()) {
-        nodes->emplace_back(part);
-        // path is from the beginning of the string to the end of the current
-        // part; this works because part is a reference to the internals of
-        // entry.name
-        nodes->back().path.assign(
-            entry.name.data(), part.data() + part.size() - entry.name.data());
-        it = nodes->end() - 1;
-      }
-      nodes = &it->children;
-    }
-
-    auto it = std::find_if(nodes->begin(), nodes->end(), [&](const auto& node) {
-      return node.name == parts.back();
-    });
-    if (it == nodes->end()) {
-      nodes->emplace_back(parts.back());
-      // no need to set path, as it's identical to entry.name
-      it = nodes->end() - 1;
-    }
-    it->entry = &entry;
-  });
-}
-
-void LogLoader::DisplayEntryTree(const std::vector<EntryTreeNode>& nodes) {}
