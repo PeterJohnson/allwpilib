@@ -394,6 +394,10 @@ if(WITH_CSCORE)
     add_subdirectory(cameraserver)
 endif()
 
+IF(WITH_GUI AND WITH_CSCORE)
+    add_subdirectory(cameraviewer)
+endif()
+
 if(WITH_WPILIB)
     set(WPILIBC_DEP_REPLACE ${WPILIBC_DEP_REPLACE_IMPL})
     add_subdirectory(apriltag)
