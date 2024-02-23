@@ -8,17 +8,24 @@
 
 using namespace nt::net;
 
-static constexpr size_t kMaxSize = 2 * 1024 * 1024;
-
-void NetworkLoopQueue::SetValue(NT_Publisher pubHandle, const Value& value) {
+void NetworkLoopQueue::Append(ClientMessage&& msg) {
   std::scoped_lock lock{m_mutex};
-  m_size += sizeof(ClientMessage) + value.size();
-  if (m_size > kMaxSize) {
+  if (auto valueMsg = std::get_if<ClientValueMsg>(&msg.contents)) {
+    m_valueSize += valueMsg->value.size();
+    if (m_valueSize > m_maxValueSize) {
+      if (!m_valueSizeErrored) {
+        WPI_ERROR(m_logger, "NT: dropping value set due to memory limits");
+        m_valueSizeErrored = true;
+      }
+      return;  // avoid potential out of memory
+    }
+  }
+  if (m_queue.size() >= m_maxSize) {
     if (!m_sizeErrored) {
-      WPI_ERROR(m_logger, "NT: dropping value set due to memory limits");
+      WPI_ERROR(m_logger, "NT: dropping control message due to memory limits");
       m_sizeErrored = true;
     }
     return;  // avoid potential out of memory
   }
-  m_queue.emplace_back(ClientMessage{ClientValueMsg{pubHandle, value}});
+  m_queue.emplace_back(std::move(msg));
 }

@@ -13,20 +13,27 @@
 
 namespace nt::net {
 
+inline void NetworkLoopQueue::SetMaxQueueSize(size_t size) {
+  std::scoped_lock lock{m_mutex};
+  m_maxSize = size;
+}
+
 inline void NetworkLoopQueue::ReadQueue(std::vector<ClientMessage>* out) {
   std::scoped_lock lock{m_mutex};
   out->swap(m_queue);
   m_queue.resize(0);
   m_queue.reserve(out->capacity());  // keep the same running capacity
-  m_size = 0;
+  m_valueSize = 0;
   m_sizeErrored = false;
+  m_valueSizeErrored = false;
 }
 
 inline void NetworkLoopQueue::ClearQueue() {
   std::scoped_lock lock{m_mutex};
   m_queue.resize(0);
-  m_size = 0;
+  m_valueSize = 0;
   m_sizeErrored = false;
+  m_valueSizeErrored = false;
 }
 
 inline void NetworkLoopQueue::Publish(NT_Publisher pubHandle,
@@ -35,37 +42,36 @@ inline void NetworkLoopQueue::Publish(NT_Publisher pubHandle,
                                       std::string_view typeStr,
                                       const wpi::json& properties,
                                       const PubSubOptionsImpl& options) {
-  std::scoped_lock lock{m_mutex};
-  m_queue.emplace_back(
-      ClientMessage{PublishMsg{pubHandle, topicHandle, std::string{name},
-                               std::string{typeStr}, properties, options}});
+  Append(ClientMessage{PublishMsg{pubHandle, topicHandle, std::string{name},
+                                  std::string{typeStr}, properties, options}});
 }
 
 inline void NetworkLoopQueue::Unpublish(NT_Publisher pubHandle,
                                         NT_Topic topicHandle) {
-  std::scoped_lock lock{m_mutex};
-  m_queue.emplace_back(ClientMessage{UnpublishMsg{pubHandle, topicHandle}});
+  Append(ClientMessage{UnpublishMsg{pubHandle, topicHandle}});
 }
 
 inline void NetworkLoopQueue::SetProperties(NT_Topic topicHandle,
                                             std::string_view name,
                                             const wpi::json& update) {
-  std::scoped_lock lock{m_mutex};
-  m_queue.emplace_back(
+  Append(
       ClientMessage{SetPropertiesMsg{topicHandle, std::string{name}, update}});
 }
 
 inline void NetworkLoopQueue::Subscribe(NT_Subscriber subHandle,
                                         std::span<const std::string> topicNames,
                                         const PubSubOptionsImpl& options) {
-  std::scoped_lock lock{m_mutex};
-  m_queue.emplace_back(ClientMessage{SubscribeMsg{
+  Append(ClientMessage{SubscribeMsg{
       subHandle, {topicNames.begin(), topicNames.end()}, options}});
 }
 
 inline void NetworkLoopQueue::Unsubscribe(NT_Subscriber subHandle) {
-  std::scoped_lock lock{m_mutex};
-  m_queue.emplace_back(ClientMessage{UnsubscribeMsg{subHandle}});
+  Append(ClientMessage{UnsubscribeMsg{subHandle}});
+}
+
+inline void NetworkLoopQueue::SetValue(NT_Publisher pubHandle,
+                                       const Value& value) {
+  Append(ClientMessage{ClientValueMsg{pubHandle, value}});
 }
 
 }  // namespace nt::net

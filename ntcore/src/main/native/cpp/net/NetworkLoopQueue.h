@@ -21,14 +21,20 @@ namespace nt::net {
 
 class NetworkLoopQueue : public NetworkInterface {
  public:
-  static constexpr size_t kInitialQueueSize = 2000;
+  static constexpr size_t kInitialQueueSize = 1000;
+  static constexpr size_t kMaxQueueSize = 10000;
+  static constexpr size_t kMaxValueSize = 1 * 1024 * 1024;
 
   explicit NetworkLoopQueue(wpi::Logger& logger) : m_logger{logger} {
     m_queue.reserve(kInitialQueueSize);
   }
 
+  void SetMaxQueueSize(size_t size);
+
   void ReadQueue(std::vector<ClientMessage>* out);
   void ClearQueue();
+
+  void Append(ClientMessage&& msg);
 
   // NetworkInterface - calls to these append to the queue
   void Publish(NT_Publisher pubHandle, NT_Topic topicHandle,
@@ -48,8 +54,11 @@ class NetworkLoopQueue : public NetworkInterface {
   wpi::mutex m_mutex;
   std::vector<ClientMessage> m_queue;
   wpi::Logger& m_logger;
-  size_t m_size{0};
+  size_t m_valueSize{0};
+  size_t m_maxSize{kMaxQueueSize};
+  size_t m_maxValueSize{kMaxValueSize};
   bool m_sizeErrored{false};
+  bool m_valueSizeErrored{false};
 };
 
 }  // namespace nt::net
