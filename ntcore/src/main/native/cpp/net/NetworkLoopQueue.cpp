@@ -8,7 +8,7 @@
 
 using namespace nt::net;
 
-void NetworkLoopQueue::Append(ClientMessage&& msg) {
+void ClientMessageQueue::Append(ClientMessage&& msg) {
   std::scoped_lock lock{m_mutex};
   if (auto valueMsg = std::get_if<ClientValueMsg>(&msg.contents)) {
     m_valueSize += valueMsg->value.size();

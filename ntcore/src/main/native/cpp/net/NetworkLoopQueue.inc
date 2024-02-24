@@ -13,12 +13,12 @@
 
 namespace nt::net {
 
-inline void NetworkLoopQueue::SetMaxQueueSize(size_t size) {
+inline void ClientMessageQueue::SetMaxQueueSize(size_t size) {
   std::scoped_lock lock{m_mutex};
   m_maxSize = size;
 }
 
-inline void NetworkLoopQueue::ReadQueue(std::vector<ClientMessage>* out) {
+inline void ClientMessageQueue::ReadQueue(std::vector<ClientMessage>* out) {
   std::scoped_lock lock{m_mutex};
   out->swap(m_queue);
   m_queue.resize(0);
@@ -28,7 +28,7 @@ inline void NetworkLoopQueue::ReadQueue(std::vector<ClientMessage>* out) {
   m_valueSizeErrored = false;
 }
 
-inline void NetworkLoopQueue::ClearQueue() {
+inline void ClientMessageQueue::ClearQueue() {
   std::scoped_lock lock{m_mutex};
   m_queue.resize(0);
   m_valueSize = 0;
