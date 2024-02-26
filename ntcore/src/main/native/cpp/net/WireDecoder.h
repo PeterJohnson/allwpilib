@@ -61,6 +61,6 @@ void WireDecodeText(std::string_view in, ServerMessageHandler& out,
 // returns true if successfully decoded a message
 bool WireDecodeBinary(std::span<const uint8_t>* in, int64_t* outId,
                       Value* outValue, std::string* error,
-                      int64_t localTimeOffset);
+                      int64_t localTimeOffset, bool pingOnly = false);
 
 }  // namespace nt::net

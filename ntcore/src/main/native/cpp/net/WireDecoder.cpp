@@ -427,16 +427,7 @@ void nt::net::WireDecodeText(std::string_view in, ServerMessageHandler& out,
   ::WireDecodeTextImpl(in, out, logger);
 }
 
-bool nt::net::WireDecodeBinary(std::span<const uint8_t>* in, int64_t* outId,
-                               Value* outValue, std::string* error,
-                               int64_t localTimeOffset) {
-  mpack_reader_t reader;
-  mpack_reader_init_data(&reader, reinterpret_cast<const char*>(in->data()),
-                         in->size());
-  mpack_expect_array_match(&reader, 4);
-  *outId = mpack_expect_i64(&reader);
-  auto time = mpack_expect_i64(&reader);
-  int type = mpack_expect_int(&reader);
+static bool DecodeValue(mpack_reader_t& reader, int type, Value* outValue) {
   switch (type) {
     case 0:  // boolean
       *outValue = Value::MakeBoolean(mpack_expect_bool(&reader), 1);
@@ -554,8 +545,26 @@ bool nt::net::WireDecodeBinary(std::span<const uint8_t>* in, int64_t* outId,
       break;
     }
     default:
-      *error = fmt::format("unrecognized type {}", type);
       return false;
+  }
+  return true;
+}
+
+bool nt::net::WireDecodeBinary(std::span<const uint8_t>* in, int64_t* outId,
+                               Value* outValue, std::string* error,
+                               int64_t localTimeOffset, bool pingOnly) {
+  mpack_reader_t reader;
+  mpack_reader_init_data(&reader, reinterpret_cast<const char*>(in->data()),
+                         in->size());
+  mpack_expect_array_match(&reader, 4);
+  *outId = mpack_expect_i64(&reader);
+  auto time = mpack_expect_i64(&reader);
+  int type = mpack_expect_int(&reader);
+  if (pingOnly && *outId != -1) {
+    mpack_discard(&reader);
+  } else if (!DecodeValue(reader, type, outValue)) {
+    *error = fmt::format("unrecognized type {}", type);
+    return false;
   }
   mpack_done_array(&reader);
   auto err = mpack_reader_destroy(&reader);

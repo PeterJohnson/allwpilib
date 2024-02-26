@@ -252,7 +252,7 @@ void NetworkServer::ServerConnection4::ProcessWsUpgrade() {
           int64_t pubuid;
           Value value;
           std::string error;
-          if (!net::WireDecodeBinary(&data, &pubuid, &value, &error, 0)) {
+          if (!net::WireDecodeBinary(&data, &pubuid, &value, &error, 0, true)) {
             m_wire->Disconnect(fmt::format("binary decode error: {}", error));
             break;
           }
