@@ -5,6 +5,16 @@ import subprocess
 import tempfile
 
 
+def download_release(url, extractname):
+    cwd = os.getcwd()
+    os.chdir(tempfile.gettempdir())
+    subprocess.run(["wget", url])
+    subprocess.run(["tar", "-xzf", os.path.basename(url)])
+    dest = os.path.join(os.getcwd(), extractname)
+    os.chdir(cwd)
+    return dest
+
+
 def clone_repo(url, treeish, shallow=True):
     """Clones a Git repo at the given URL into a temp folder, checks out the
     given tree-ish (either branch or tag), then returns the repo root.
