@@ -709,6 +709,22 @@ void DataLog::SetMetadata(int entry, std::string_view metadata,
   AppendStringImpl(metadata);
 }
 
+void DataLog::PreventDuplicates(int entry, bool enable) {
+  if (entry <= 0) {
+    return;
+  }
+  std::scoped_lock lock{m_mutex};
+  m_entryIds[entry].preventDuplicates = enable;
+}
+
+void DataLog::SaveLastValues(int entry, bool enable) {
+  if (entry <= 0) {
+    return;
+  }
+  std::scoped_lock lock{m_mutex};
+  m_entryIds[entry].saveLastValues = enable;
+}
+
 uint8_t* DataLog::Reserve(size_t size) {
   assert(size <= kBlockSize);
   if (m_outgoing.empty() || size > m_outgoing.back().GetRemaining()) {
@@ -765,6 +781,22 @@ void DataLog::AppendRaw(int entry, std::span<const uint8_t> data,
   if (m_state != kActive) {
     [[unlikely]] return;
   }
+
+  // duplicate and last value
+  auto it = m_entryIds.find(entry);
+  if (it == m_entryIds.end()) {
+    [[unlikely]] return;
+  }
+  if (it->second.preventDuplicates &&
+      std::equal(it->second.lastValue.begin(), it->second.lastValue.end(),
+                 data.begin(), data.end())) {
+    return;
+  }
+  if (it->second.preventDuplicates || it->second.saveLastValues) {
+    it->second.lastValue.assign(data.begin(), data.end());
+  }
+
+  // write value to file
   StartRecord(entry, timestamp, data.size(), 0);
   AppendImpl(data);
 }
@@ -783,6 +815,36 @@ void DataLog::AppendRaw2(int entry,
   for (auto&& chunk : data) {
     size += chunk.size();
   }
+
+  // duplicate and last value
+  auto it = m_entryIds.find(entry);
+  if (it == m_entryIds.end()) {
+    [[unlikely]] return;
+  }
+  if (it->second.preventDuplicates && it->second.lastValue.size() == size) {
+    size_t offset = 0;
+    bool equal = true;
+    for (auto chunk : data) {
+      if (!std::equal(it->second.lastValue.begin() + offset,
+                      it->second.lastValue.begin() + offset + chunk.size(),
+                      chunk.begin(), chunk.end())) {
+        equal = false;
+        break;
+      }
+    }
+    if (equal) {
+      return;
+    }
+  }
+  if (it->second.preventDuplicates || it->second.saveLastValues) {
+    it->second.lastValue.clear();
+    it->second.lastValue.reserve(size);
+    for (auto chunk : data) {
+      it->second.lastValue.append(chunk.begin(), chunk.end());
+    }
+  }
+
+  // write value to file
   StartRecord(entry, timestamp, size, 0);
   for (auto chunk : data) {
     AppendImpl(chunk);
@@ -797,8 +859,25 @@ void DataLog::AppendBoolean(int entry, bool value, int64_t timestamp) {
   if (m_state != kActive) {
     [[unlikely]] return;
   }
+
+  // duplicate and last value
+  auto it = m_entryIds.find(entry);
+  if (it == m_entryIds.end()) {
+    [[unlikely]] return;
+  }
+  uint8_t data = value ? 1 : 0;
+  if (it->second.preventDuplicates && it->second.lastValue.size() == 1 &&
+      it->second.lastValue[0] == data) {
+    return;
+  }
+  if (it->second.preventDuplicates || it->second.saveLastValues) {
+    it->second.lastValue.resize_for_overwrite(1);
+    it->second.lastValue[0] = data;
+  }
+
+  // write value to file
   uint8_t* buf = StartRecord(entry, timestamp, 1, 1);
-  buf[0] = value ? 1 : 0;
+  buf[0] = data;
 }
 
 void DataLog::AppendInteger(int entry, int64_t value, int64_t timestamp) {
@@ -809,8 +888,28 @@ void DataLog::AppendInteger(int entry, int64_t value, int64_t timestamp) {
   if (m_state != kActive) {
     [[unlikely]] return;
   }
+
+  // duplicate
+  auto it = m_entryIds.find(entry);
+  if (it == m_entryIds.end()) {
+    [[unlikely]] return;
+  }
+  if (it->second.preventDuplicates && it->second.lastValue.size() == 8 &&
+      static_cast<uint64_t>(value) ==
+          wpi::support::endian::read64le(it->second.lastValue.data())) {
+    return;
+  }
+  bool saveLast = it->second.preventDuplicates || it->second.saveLastValues;
+
+  // write value to file
   uint8_t* buf = StartRecord(entry, timestamp, 8, 8);
   wpi::support::endian::write64le(buf, value);
+
+  // last value
+  if (saveLast) {
+    it->second.lastValue.resize_for_overwrite(8);
+    std::memcpy(it->second.lastValue.data(), buf, 8);
+  }
 }
 
 void DataLog::AppendFloat(int entry, float value, int64_t timestamp) {
@@ -821,12 +920,32 @@ void DataLog::AppendFloat(int entry, float value, int64_t timestamp) {
   if (m_state != kActive) {
     [[unlikely]] return;
   }
+
+  // duplicate
+  auto it = m_entryIds.find(entry);
+  if (it == m_entryIds.end()) {
+    [[unlikely]] return;
+  }
+  if (it->second.preventDuplicates && it->second.lastValue.size() == 4 &&
+      wpi::bit_cast<uint32_t>(value) ==
+          wpi::support::endian::read32le(it->second.lastValue.data())) {
+    return;
+  }
+  bool saveLast = it->second.preventDuplicates || it->second.saveLastValues;
+
+  // write value to file
   uint8_t* buf = StartRecord(entry, timestamp, 4, 4);
   if constexpr (wpi::support::endian::system_endianness() ==
                 wpi::support::little) {
     std::memcpy(buf, &value, 4);
   } else {
     wpi::support::endian::write32le(buf, wpi::bit_cast<uint32_t>(value));
+  }
+
+  // last value
+  if (saveLast) {
+    it->second.lastValue.resize_for_overwrite(4);
+    std::memcpy(it->second.lastValue.data(), buf, 4);
   }
 }
 
@@ -838,12 +957,32 @@ void DataLog::AppendDouble(int entry, double value, int64_t timestamp) {
   if (m_state != kActive) {
     [[unlikely]] return;
   }
+
+  // duplicate
+  auto it = m_entryIds.find(entry);
+  if (it == m_entryIds.end()) {
+    [[unlikely]] return;
+  }
+  if (it->second.preventDuplicates && it->second.lastValue.size() == 8 &&
+      wpi::bit_cast<uint64_t>(value) ==
+          wpi::support::endian::read64le(it->second.lastValue.data())) {
+    return;
+  }
+  bool saveLast = it->second.preventDuplicates || it->second.saveLastValues;
+
+  // write value to file
   uint8_t* buf = StartRecord(entry, timestamp, 8, 8);
   if constexpr (wpi::support::endian::system_endianness() ==
                 wpi::support::little) {
     std::memcpy(buf, &value, 8);
   } else {
     wpi::support::endian::write64le(buf, wpi::bit_cast<uint64_t>(value));
+  }
+
+  // last value
+  if (saveLast) {
+    it->second.lastValue.resize_for_overwrite(8);
+    std::memcpy(it->second.lastValue.data(), buf, 8);
   }
 }
 
@@ -863,6 +1002,27 @@ void DataLog::AppendBooleanArray(int entry, std::span<const bool> arr,
   if (m_state != kActive) {
     [[unlikely]] return;
   }
+
+  // duplicate and last value
+  auto it = m_entryIds.find(entry);
+  if (it == m_entryIds.end()) {
+    [[unlikely]] return;
+  }
+  if (it->second.preventDuplicates &&
+      std::equal(it->second.lastValue.begin(), it->second.lastValue.end(),
+                 arr.begin(), arr.end(),
+                 [](auto a, auto b) { return a == (b ? 1 : 0); })) {
+    return;
+  }
+  if (it->second.preventDuplicates || it->second.saveLastValues) {
+    it->second.lastValue.resize_for_overwrite(arr.size());
+    uint8_t* lv = it->second.lastValue.data();
+    for (auto val : arr) {
+      *lv++ = val ? 1 : 0;
+    }
+  }
+
+  // write value to file
   StartRecord(entry, timestamp, arr.size(), 0);
   uint8_t* buf;
   while (arr.size() > kBlockSize) {
@@ -887,6 +1047,27 @@ void DataLog::AppendBooleanArray(int entry, std::span<const int> arr,
   if (m_state != kActive) {
     [[unlikely]] return;
   }
+
+  // duplicate and last value
+  auto it = m_entryIds.find(entry);
+  if (it == m_entryIds.end()) {
+    [[unlikely]] return;
+  }
+  if (it->second.preventDuplicates &&
+      std::equal(it->second.lastValue.begin(), it->second.lastValue.end(),
+                 arr.begin(), arr.end(),
+                 [](auto a, auto b) { return a == (b & 1); })) {
+    return;
+  }
+  if (it->second.preventDuplicates || it->second.saveLastValues) {
+    it->second.lastValue.resize_for_overwrite(arr.size());
+    uint8_t* lv = it->second.lastValue.data();
+    for (auto val : arr) {
+      *lv++ = val & 1;
+    }
+  }
+
+  // write value to file
   StartRecord(entry, timestamp, arr.size(), 0);
   uint8_t* buf;
   while (arr.size() > kBlockSize) {
@@ -1130,6 +1311,16 @@ void WPI_DataLog_Finish(struct WPI_DataLog* datalog, int entry,
 void WPI_DataLog_SetMetadata(struct WPI_DataLog* datalog, int entry,
                              const char* metadata, int64_t timestamp) {
   reinterpret_cast<DataLog*>(datalog)->SetMetadata(entry, metadata, timestamp);
+}
+
+void WPI_DataLog_PreventDuplicates(struct WPI_DataLog* datalog, int entry,
+                                   int enable) {
+  reinterpret_cast<DataLog*>(datalog)->PreventDuplicates(entry, enable);
+}
+
+void WPI_DataLog_SaveLastValues(struct WPI_DataLog* datalog, int entry,
+                                int enable) {
+  reinterpret_cast<DataLog*>(datalog)->SaveLastValues(entry, enable);
 }
 
 void WPI_DataLog_AppendRaw(struct WPI_DataLog* datalog, int entry,

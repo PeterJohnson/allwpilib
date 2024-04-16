@@ -241,8 +241,10 @@ WPI_DataLog_Create_Func
 WPI_DataLog_Finish
 WPI_DataLog_Flush
 WPI_DataLog_Pause
+WPI_DataLog_PreventDuplicates
 WPI_DataLog_Release
 WPI_DataLog_Resume
+WPI_DataLog_SaveLastValues
 WPI_DataLog_SetFilename
 WPI_DataLog_SetMetadata
 WPI_DataLog_Start

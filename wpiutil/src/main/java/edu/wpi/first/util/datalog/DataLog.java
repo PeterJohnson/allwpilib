@@ -330,6 +330,32 @@ public final class DataLog implements AutoCloseable {
   }
 
   /**
+   * Sets duplicate detection behavior for an entry.  By default, this is
+   * disabled, so every append() call results in output to the file.  With this
+   * enabled, append() will only output to the file if the value is different
+   * than the previous value.  Enabling duplicate prevention force-enables
+   * saving of the last value.
+   *
+   * @param entry Entry index
+   * @param enable duplicate prevention enable (true) / disable (false)
+   */
+  public void preventDuplicates(int entry, boolean enable) {
+    DataLogJNI.preventDuplicates(m_impl, entry, enable);
+  }
+
+  /**
+   * Sets last value saving behavior for an entry.  By default, this is
+   * disabled.  Enabling this consumes a bit more time and memory but is
+   * required for getLast() functions to work.
+   *
+   * @param entry Entry index
+   * @param enable last value saving enable (true) / disable (false)
+   */
+  public void saveLastValues(int entry, boolean enable) {
+    DataLogJNI.saveLastValues(m_impl, entry, enable);
+  }
+
+  /**
    * Appends a raw record to the log.
    *
    * @param entry Entry index, as returned by start()

@@ -315,6 +315,28 @@ class DataLog final {
   void SetMetadata(int entry, std::string_view metadata, int64_t timestamp = 0);
 
   /**
+   * Sets duplicate detection behavior for an entry.  By default, this is
+   * disabled, so every Append() call results in output to the file.  With this
+   * enabled, Append() will only output to the file if the value is different
+   * than the previous value.  Enabling duplicate prevention force-enables
+   * saving of the last value.
+   *
+   * @param entry Entry index
+   * @param enable duplicate prevention enable (true) / disable (false)
+   */
+  void PreventDuplicates(int entry, bool enable);
+
+  /**
+   * Sets last value saving behavior for an entry.  By default, this is
+   * disabled.  Enabling this consumes a bit more time and memory but is
+   * required for GetLast() functions to work.
+   *
+   * @param entry Entry index
+   * @param enable last value saving enable (true) / disable (false)
+   */
+  void SaveLastValues(int entry, bool enable);
+
+  /**
    * Appends a raw record to the log.
    *
    * @param entry Entry index, as returned by Start()
@@ -468,6 +490,265 @@ class DataLog final {
   void AppendStringArray(int entry, std::span<const WPI_DataLog_String> arr,
                          int64_t timestamp);
 
+  /**
+   * Appends a raw record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param data Byte array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  void UpdateRaw(int entry, std::span<const uint8_t> data, int64_t timestamp);
+
+  /**
+   * Appends a raw record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param data Byte array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  void UpdateRaw2(int entry, std::span<const std::span<const uint8_t>> data,
+                  int64_t timestamp);
+
+  /**
+   * Appends a boolean record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param value Boolean value to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  void UpdateBoolean(int entry, bool value, int64_t timestamp);
+
+  /**
+   * Appends an integer record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param value Integer value to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  void UpdateInteger(int entry, int64_t value, int64_t timestamp);
+
+  /**
+   * Appends a float record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param value Float value to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  void UpdateFloat(int entry, float value, int64_t timestamp);
+
+  /**
+   * Appends a double record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param value Double value to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  void UpdateDouble(int entry, double value, int64_t timestamp);
+
+  /**
+   * Appends a string record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param value String value to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  void UpdateString(int entry, std::string_view value, int64_t timestamp);
+
+  /**
+   * Appends a boolean array record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param arr Boolean array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  void UpdateBooleanArray(int entry, std::span<const bool> arr,
+                          int64_t timestamp);
+
+  /**
+   * Appends a boolean array record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param arr Boolean array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  void UpdateBooleanArray(int entry, std::span<const int> arr,
+                          int64_t timestamp);
+
+  /**
+   * Appends a boolean array record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param arr Boolean array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  void UpdateBooleanArray(int entry, std::span<const uint8_t> arr,
+                          int64_t timestamp);
+
+  /**
+   * Appends an integer array record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param arr Integer array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  void UpdateIntegerArray(int entry, std::span<const int64_t> arr,
+                          int64_t timestamp);
+
+  /**
+   * Appends a float array record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param arr Float array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  void UpdateFloatArray(int entry, std::span<const float> arr,
+                        int64_t timestamp);
+
+  /**
+   * Appends a double array record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param arr Double array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  void UpdateDoubleArray(int entry, std::span<const double> arr,
+                         int64_t timestamp);
+
+  /**
+   * Appends a string array record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param arr String array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  void UpdateStringArray(int entry, std::span<const std::string> arr,
+                         int64_t timestamp);
+
+  /**
+   * Appends a string array record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param arr String array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  void UpdateStringArray(int entry, std::span<const std::string_view> arr,
+                         int64_t timestamp);
+
+  /**
+   * Appends a string array record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param arr String array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  void UpdateStringArray(int entry, std::span<const WPI_DataLog_String> arr,
+                         int64_t timestamp);
+
+  /**
+   * Appends a raw record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param data Byte array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  std::vector<uint8_t> GetLastRaw(int entry,
+                                  std::span<const uint8_t> defaultValue);
+
+  /**
+   * Appends a boolean record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param value Boolean value to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  bool GetLastBoolean(int entry, bool defaultValue);
+
+  /**
+   * Appends an integer record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param value Integer value to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  int64_t GetLastInteger(int entry, int64_t defaultValue);
+
+  /**
+   * Appends a float record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param value Float value to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  float GetLastFloat(int entry, float defaultValue);
+
+  /**
+   * Appends a double record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param value Double value to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  double GetLastDouble(int entry, double defaultValue);
+
+  /**
+   * Appends a string record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param value String value to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  std::string GetLastString(int entry, std::string_view defaultValue);
+
+  /**
+   * Appends a boolean array record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param arr Boolean array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  std::vector<int> GetLastBooleanArray(int entry,
+                                       std::span<const int> defaultValue);
+
+  /**
+   * Appends an integer array record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param arr Integer array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  std::vector<int64_t> GetLastIntegerArray(
+      int entry, std::span<const int64_t> defaultValue);
+
+  /**
+   * Appends a float array record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param arr Float array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  std::vector<float> GetLastFloatArray(int entry,
+                                       std::span<const float> defaultValue);
+
+  /**
+   * Appends a double array record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param arr Double array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  std::vector<double> GetLastDoubleArray(int entry,
+                                         std::span<const double> defaultValue);
+
+  /**
+   * Appends a string array record to the log.
+   *
+   * @param entry Entry index, as returned by Start()
+   * @param arr String array to record
+   * @param timestamp Time stamp (may be 0 to indicate now)
+   */
+  std::vector<std::string> GetLastStringArray(
+      int entry, std::span<const std::string> defaultValue);
+
  private:
   struct WriterThreadState;
 
@@ -512,7 +793,10 @@ class DataLog final {
   wpi::StringMap<EntryInfo> m_entries;
   struct EntryInfo2 {
     std::string metadata;
+    wpi::SmallVector<uint8_t, 8> lastValue;
     unsigned int count;
+    bool preventDuplicates = false;
+    bool saveLastValues = false;
   };
   wpi::DenseMap<int, EntryInfo2> m_entryIds;
   int m_lastId = 0;
@@ -557,6 +841,29 @@ class DataLogEntry {
   void SetMetadata(std::string_view metadata, int64_t timestamp = 0) {
     m_log->SetMetadata(m_entry, metadata, timestamp);
   }
+
+  /**
+   * Sets duplicate detection behavior for the entry.  By default, this is
+   * disabled, so every Append() call results in output to the file.  With this
+   * enabled, Append() will only output to the file if the value is different
+   * than the previous value.  Enabling duplicate prevention force-enables
+   * saving of the last value.
+   *
+   * @param enable Change tracking enable (true) / disable (false)
+   */
+  void PreventDuplicates(bool enable) {
+    m_log->PreventDuplicates(m_entry, enable);
+  }
+
+  /**
+   * Sets last value saving behavior for the entry.  By default, this is
+   * disabled.  Enabling this consumes a bit more time and memory but is
+   * required for GetLast() functions to work.
+   *
+   * @param entry Entry index
+   * @param enable last value saving enable (true) / disable (false)
+   */
+  void SaveLastValues(bool enable) { m_log->SaveLastValues(m_entry, enable); }
 
   /**
    * Finishes the entry.
@@ -991,7 +1298,8 @@ class StructLogEntry : public DataLogEntry {
   }
 
  private:
-  [[no_unique_address]] std::tuple<I...> m_info;
+  [[no_unique_address]]
+  std::tuple<I...> m_info;
 };
 
 /**
@@ -1059,7 +1367,8 @@ class StructArrayLogEntry : public DataLogEntry {
 
  private:
   StructArrayBuffer<T, I...> m_buf;
-  [[no_unique_address]] std::tuple<I...> m_info;
+  [[no_unique_address]]
+  std::tuple<I...> m_info;
 };
 
 /**
@@ -1226,6 +1535,32 @@ void WPI_DataLog_Finish(struct WPI_DataLog* datalog, int entry,
  */
 void WPI_DataLog_SetMetadata(struct WPI_DataLog* datalog, int entry,
                              const char* metadata, int64_t timestamp);
+
+/**
+ * Sets duplicate detection behavior for an entry.  By default, this is
+ * disabled, so every Append() call results in output to the file.  With this
+ * enabled, Append() will only output to the file if the value is different
+ * than the previous value.  Enabling duplicate prevention force-enables
+ * saving of the last value.
+ *
+ * @param datalog data log
+ * @param entry Entry index
+ * @param enable duplicate prevention enable (true) / disable (false)
+ */
+void WPI_DataLog_PreventDuplicates(struct WPI_DataLog* datalog, int entry,
+                                   int enable);
+
+/**
+ * Sets last value saving behavior for an entry.  By default, this is
+ * disabled.  Enabling this consumes a bit more time and memory but is
+ * required for GetLast() functions to work.
+ *
+ * @param datalog data log
+ * @param entry Entry index
+ * @param enable last value saving enable (true) / disable (false)
+ */
+void WPI_DataLog_SaveLastValues(struct WPI_DataLog* datalog, int entry,
+                                int enable);
 
 /**
  * Appends a raw record to the log.

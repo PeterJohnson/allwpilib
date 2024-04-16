@@ -119,6 +119,30 @@ public class DataLogJNI extends WPIUtilJNI {
   static native void setMetadata(long impl, int entry, String metadata, long timestamp);
 
   /**
+   * Sets duplicate detection behavior for an entry.  By default, this is
+   * disabled, so every append() call results in output to the file.  With this
+   * enabled, append() will only output to the file if the value is different
+   * than the previous value.  Enabling duplicate prevention force-enables
+   * saving of the last value.
+   *
+   * @param impl data log implementation handle
+   * @param entry Entry index
+   * @param enable duplicate prevention enable (true) / disable (false)
+   */
+  static native void preventDuplicates(long impl, int entry, boolean enable);
+
+  /**
+   * Sets last value saving behavior for an entry.  By default, this is
+   * disabled.  Enabling this consumes a bit more time and memory but is
+   * required for getLast() functions to work.
+   *
+   * @param impl data log implementation handle
+   * @param entry Entry index
+   * @param enable last value saving enable (true) / disable (false)
+   */
+  static native void saveLastValues(long impl, int entry, boolean enable);
+
+  /**
    * Closes the data log implementation handle.
    *
    * @param impl data log implementation handle

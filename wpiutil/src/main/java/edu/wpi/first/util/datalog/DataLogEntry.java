@@ -63,6 +63,30 @@ public class DataLogEntry {
   }
 
   /**
+   * Sets duplicate detection behavior for an entry.  By default, this is
+   * disabled, so every append() call results in output to the file.  With this
+   * enabled, append() will only output to the file if the value is different
+   * than the previous value.  Enabling duplicate prevention force-enables
+   * saving of the last value.
+   *
+   * @param enable duplicate prevention enable (true) / disable (false)
+   */
+  public void preventDuplicates(boolean enable) {
+    m_log.preventDuplicates(m_entry, enable);
+  }
+
+  /**
+   * Sets last value saving behavior for an entry.  By default, this is
+   * disabled.  Enabling this consumes a bit more time and memory but is
+   * required for getLast() functions to work.
+   *
+   * @param enable last value saving enable (true) / disable (false)
+   */
+  public void saveLastValues(boolean enable) {
+    m_log.saveLastValues(m_entry, enable);
+  }
+
+  /**
    * Finishes the entry.
    *
    * @param timestamp Time stamp (0 to indicate now)
