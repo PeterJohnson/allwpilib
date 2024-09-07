@@ -1,0 +1,63 @@
+= DomainSockets Protocol Specification, Version 1.0
+WPILib Developers <wpilib@wpi.edu>
+Protocol Revision 1.0, 9/6/2024
+:toc:
+:toc-placement: preamble
+:sectanchors:
+
+An extensible transport inspired by WebSockets but designed for minimal overhead on a local machine domain socket or pipe connection.
+
+[[motivation]]
+== Motivation
+
+WebSockets provides an extensible and flexible transport over TCP, with HTTP handshaking for web server compatibility.  However, it is high overhead for machine-local connections, as it requires shading of one direction of communication, has complex support for fragmented frames, and has a fairly complex layered handshake for HTTP compatibility.  None of these things are required for local domain or pipe connections.  However, the subprotocol negotiation and extensibility are worthwhile features to preserve in that environment so that servers can offer multiple services or protocol versions on a single domain socket endpoint, and clients can similarly negotiate based on what services they need.
+
+[[frames]]
+== Frames
+
+All transported data in both directions is packaged into tagged frames.  Each frame consists of a 5-byte header followed immediately by up to 2^32-1 bytes of payload data.  The first four bytes of the header is the length of the payload (e.g. excluding the header), in little endian order.  The 5th byte of the header is the tag byte.  The following tag bytes are defined by this specification.  Subprotocols may define additional tag values if the WebSockets-style binary and text tags are insufficient.
+
+[cols="1,2,6",options="header"]
+|===
+|Tag Value
+|Description
+|Payload
+
+|0
+|Hello
+|`HELLO 1.0`, followed by an arbitrary UTF-8 string
+
+|1
+|Error
+|Error message (UTF-8 string)
+
+|2
+|Subprotocol Request
+|List of NUL-terminated subprotocol UTF-8 strings (in priority order)
+
+|3
+|Subprotocol Grant
+|Subprotocol (UTF-8 string)
+
+|0x80
+|Binary
+|Binary data (content as defined by subprotocol)
+
+|0x81
+|Text
+|UTF-8 text data (content as defined by subprotocol)
+|===
+
+[[opening-handshake]]
+== Opening Handshake
+
+The opening handshake is a simplified version of the WebSockets opening handshake.  The general sequence is as follows:
+
+* The server sends an Hello frame
+* The client responds with an Subprotocol Request frame containing the subprotocols the client desires to use, in priority order
+* The server responds with an Subprotocol Grant frame containing the first requested subprotocol that the server supports, or if no requested protocol is available, an Error frame
+
+[[error-messages]]
+== Error Frame Handling
+
+Either client or server can send an Error frame at any time.  The pipe/socket should be closed after either sending or receiving an Error frame.

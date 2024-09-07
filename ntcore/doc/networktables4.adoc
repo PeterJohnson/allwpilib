@@ -54,6 +54,9 @@ Using WebSockets (RFC 6455) as the transport layer along with JSON and MessagePa
 [[networktables3]]
 * <<networktables3.adoc#, Network Tables Protocol Specification, Version 3.0>>
 
+[[DomainSockets]]
+* <<domain-sockets.adoc#, DomainSockets Protocol Specification, Version 1.0>>
+
 [[cristians-algorithm]]
 * Cristian's algorithm, https://en.wikipedia.org/wiki/Cristian%27s_algorithm
 
@@ -805,6 +808,19 @@ An example double value update would be 17 bytes:
 `CB 3F BF 97 24 74 53 8E F3` (double value of 0.1234)
 
 For comparison, a double value update in NT 3.0 is 14 bytes (and does not contain a timestamp).
+
+[[domain-socket]]
+== Domain Socket Transport
+
+For domain socket or pipe transport between processes running on a single machine, a simplified wire protocol (see <<DomainSockets>>) is used instead of paying for the overhead of a full WebSockets implementation.
+
+The subprotocols used in DomainSockets are identical to those used in WebSockets, as are the text and binary frame payload contents.
+
+No time synchronization or aliveness checking is performed on domain sockets (the DomainSockets protocol does not support ping or pong messages).  All wire timestamps should use the system monotonic clock (on Linux systems, `clock_gettime(CLOCK_MONOTONIC)` or equivalent) as the time base.  If the server time base is different, the server is responsible for adjusting transmitted and received timestamps to its internal time base--note this is opposite of WebSockets transport, where server time is always used for wire transport and the client must adjust the time.
+
+Unlike WebSockets transport, clients and servers should in general not need to worry about rate limiting transmissions or efficiently packing data into frames.  However, on most systems, it is more efficient to use fewer larger writes than many small ones, so implementations should perform appropriate buffering to minimize the number of small writes.
+
+This specification does not define what filesystem location or pipe name servers should use.
 
 [[drawbacks]]
 == Drawbacks
