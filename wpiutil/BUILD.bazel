@@ -108,19 +108,18 @@ filegroup(
 )
 
 cc_library(
-    name = "protobuf-headers",
+    name = "upb-headers",
     hdrs = glob([
-        "src/main/native/thirdparty/protobuf/include/**/*.h",
-        "src/main/native/thirdparty/protobuf/include/**/*.inc",
+        "src/main/native/thirdparty/upb/include/**/*.h",
     ]),
-    includes = ["src/main/native/thirdparty/protobuf/include"],
-    strip_include_prefix = "src/main/native/thirdparty/protobuf/include",
+    includes = ["src/main/native/thirdparty/upb/include"],
+    strip_include_prefix = "src/main/native/thirdparty/upb/include",
     visibility = ["//wpiutil:__subpackages__"],
 )
 
 filegroup(
-    name = "protobuf-srcs",
-    srcs = glob(["src/main/native/thirdparty/protobuf/src/**"]),
+    name = "upb-srcs",
+    srcs = glob(["src/main/native/thirdparty/upb/src/**"]),
     visibility = ["//wpiutil:__subpackages__"],
 )
 
@@ -181,8 +180,8 @@ cc_library(
         ":memory-srcs",
         ":mpack-srcs",
         ":native-srcs",
-        ":protobuf-srcs",
         ":nanopb-srcs",
+        ":upb-srcs",
     ],
     hdrs = glob(["src/main/native/include/**/*"]),
     includes = ["src/main/native/include"],
@@ -197,9 +196,9 @@ cc_library(
         ":llvm-headers",
         ":memory-headers",
         ":mpack-headers",
-        ":protobuf-headers",
         ":nanopb-headers",
         ":sigslot-headers",
+        ":upb-headers",
     ] + select({
         "@rules_bzlmodrio_toolchains//constraints/is_roborio:roborio": ["@bzlmodrio-ni//libraries/cpp/ni:shared"],
         "//conditions:default": [],

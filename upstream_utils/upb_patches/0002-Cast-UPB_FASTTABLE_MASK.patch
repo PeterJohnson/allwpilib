@@ -1,0 +1,22 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Peter Johnson <johnson.peter@gmail.com>
+Date: Sat, 9 Nov 2024 11:40:40 -0800
+Subject: [PATCH 2/3] Cast UPB_FASTTABLE_MASK
+
+---
+ upb/port/def.inc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/upb/port/def.inc b/upb/port/def.inc
+index 6aa1835f40d9865df15b7c5ff5a03188c211705f..b069292080de762646c376d692b6544d1eee2fe5 100644
+--- a/upb/port/def.inc
++++ b/upb/port/def.inc
+@@ -255,7 +255,7 @@ Error, UINTPTR_MAX is undefined
+  * degrade to non-fasttable if the runtime or platform do not support it. */
+ #if !UPB_FASTTABLE
+ #define UPB_FASTTABLE_INIT(...)
+-#define UPB_FASTTABLE_MASK(mask) -1
++#define UPB_FASTTABLE_MASK(mask) ((uint8_t)(-1))
+ #else
+ #define UPB_FASTTABLE_INIT(...) __VA_ARGS__
+ #define UPB_FASTTABLE_MASK(mask) mask
