@@ -4,23 +4,26 @@ Date: Sat, 9 Nov 2024 11:48:11 -0800
 Subject: [PATCH 3/3] Ignore more warnings
 
 ---
- upb/port/def.inc | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ upb/port/def.inc   | 13 +++++++++++++
+ upb/port/undef.inc |  7 +++++++
+ 2 files changed, 20 insertions(+)
 
 diff --git a/upb/port/def.inc b/upb/port/def.inc
-index b069292080de762646c376d692b6544d1eee2fe5..d470c0858ec6df865bdeca835a67b57f40170a41 100644
+index b069292080de762646c376d692b6544d1eee2fe5..185f79febfd0f50b8cac07ca86c38e063f18c911 100644
 --- a/upb/port/def.inc
 +++ b/upb/port/def.inc
-@@ -33,6 +33,17 @@
+@@ -33,6 +33,19 @@
  #error upb requires C99 or C++14 or MSVC >= 2015.
  #endif
  
 +#ifdef __GCC__
++#pragma GCC diagnostic push
 +#pragma GCC diagnostic ignored "-Wgnu-flexible-array-initializer"
 +#pragma GCC diagnostic ignored "-Wc11-extensions"
 +#pragma GCC diagnostic ignored "-Wsign-compare"
 +#endif
 +#ifdef __clang__
++#pragma clang diagnostic push
 +#pragma clang diagnostic ignored "-Wgnu-flexible-array-initializer"
 +#pragma clang diagnostic ignored "-Wc11-extensions"
 +#pragma clang diagnostic ignored "-Wsign-compare"
@@ -29,3 +32,21 @@ index b069292080de762646c376d692b6544d1eee2fe5..d470c0858ec6df865bdeca835a67b57f
  // Portable check for GCC minimum version:
  // https://gcc.gnu.org/onlinedocs/cpp/Common-Predefined-Macros.html
  #if defined(__GNUC__) && defined(__GNUC_MINOR__) && defined(__GNUC_PATCHLEVEL__)
+diff --git a/upb/port/undef.inc b/upb/port/undef.inc
+index d8453ffec164b968e734b85b14700615c95e2773..e32494f7f2b1e0ede163e0c3f4d432b8a7fb854c 100644
+--- a/upb/port/undef.inc
++++ b/upb/port/undef.inc
+@@ -7,6 +7,13 @@
+ 
+ // This should #undef all macros #defined in def.inc
+ 
++#ifdef __GCC__
++#pragma GCC diagnostic pop
++#endif
++#ifdef __clang__
++#pragma clang diagnostic pop
++#endif
++
+ #undef UPB_SIZE
+ #undef UPB_PTR_AT
+ #undef UPB_MAPTYPE_STRING

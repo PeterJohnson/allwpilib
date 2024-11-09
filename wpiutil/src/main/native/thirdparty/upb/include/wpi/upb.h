@@ -29,11 +29,13 @@
 #endif
 
 #ifdef __GCC__
+#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wgnu-flexible-array-initializer"
 #pragma GCC diagnostic ignored "-Wc11-extensions"
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #endif
 #ifdef __clang__
+#pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-flexible-array-initializer"
 #pragma clang diagnostic ignored "-Wc11-extensions"
 #pragma clang diagnostic ignored "-Wsign-compare"
@@ -15013,6 +15015,13 @@ wpi_upb_MethodDef* _wpi_upb_MethodDefs_New(wpi_upb_DefBuilder* ctx, int n,
 #endif /* WPI_UPB_REFLECTION_METHOD_DEF_INTERNAL_H_ */
 
 // This should #undef all macros #defined in def.inc
+
+#ifdef __GCC__
+#pragma GCC diagnostic pop
+#endif
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 #undef WPI_UPB_SIZE
 #undef WPI_UPB_PTR_AT
