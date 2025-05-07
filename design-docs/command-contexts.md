@@ -193,17 +193,22 @@ public class Robot extends CommandRobot {
     CommandOpModes().any.trigger(storage.hasCargo).onTrue(intake.retractCommand());
 
     // Create auto opmodes
-    addSimpleAuto();
+    addSimpleAuto(CommandOpModes.autonomous("Simple Auto"));
     addPathAuto("drive and turn");
 
     // Create teleop opmodes
-    addArcadeTeleop();
-    addTankTeleop();
+    var arcadeTeleop = CommandOpModes.teleoperated("Arcade Drive");
+    addArcadeDriveBindings(arcadeTeleop);
+    addIntakeBindings(arcadeTeleop);
+
+    var tankTeleop = CommandOpModes.teleoperated("Tank Drive");
+    addTankDriveBindings(tankTeleop);
+    addIntakeBindings(tankTeleop);
   }
 
-  private void addSimpleAuto() {
+  private void addSimpleAuto(CommandOpMode opmode) {
     // A simple autonomous opmode
-    CommandOpModes.autonomous("Simple Auto").running.whileTrue(Autos.simpleAuto(this));
+    opmode.running.whileTrue(Autos.simpleAuto(this));
   }
 
   private void addPathAuto(String path) {
@@ -222,32 +227,24 @@ public class Robot extends CommandRobot {
     driverController.y().onTrue(intake.retractCommand());
   }
 
-  private void addArcadeTeleop() {
-    // A teleop opmode with joystick and button controls
-    CommandOpMode opmode = CommandOpModes.teleoperated("teleop");
+  private void addArcadeDriveBindings(CommandOpMode opmode) {
+    var driverController = new CommandXboxController(0, opmode);
 
     // Control the drive with split-stick arcade controls
     drive.setDefaultCommand(
         opmode,
         drive.arcadeDriveCommand(
             () -> -driverController.getLeftY(), () -> -driverController.getRightX()));
-
-    // Add intake bindings
-    addIntakeBindings(opmode);
   }
 
-  private void addTankTeleop() {
-    // A teleop opmode with joystick and button controls
-    CommandOpMode opmode = CommandOpModes.teleoperated("teleop");
+  private void addTankDriveBindings(CommandOpMode opmode) {
+    var driverController = new CommandXboxController(0, opmode);
 
-    // Control the drive with split-stick arcade controls
+    // Control the drive with split-stick tank controls
     drive.setDefaultCommand(
         opmode,
         drive.tankDriveCommand(
             () -> -driverController.getLeftY(), () -> -driverController.getRightY()));
-
-    // Add intake bindings
-    addIntakeBindings(opmode);
   }
 }
 
