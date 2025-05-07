@@ -100,7 +100,7 @@ public class CommandOpMode extends Context {
 
 To help with operations on `BooleanSupplier`s, a `Conditions` class provides static utility methods.
 
-Previously, these operations would be done by creating a `Trigger` and using the instance methods on that class.  However, using a `Trigger` for conditions not meant to trigger commands is not proper usage, especially with the new requirement that `Trigger`s always have an associated `Context`.
+Previously, these operations would be done by creating a `Trigger` and using the instance methods on that class.  However, using a `Trigger` for conditions not meant to trigger commands is not proper usage, especially with the new requirement that `Trigger`s always have an associated `Context`.  Defining a `Condition` functional interface with the appropriate utility methods was considered, but was decided against due to the confusion it would cause about when to use it instead of `Context`, `Trigger`, or `BooleanEvent`.
 
 ```java
 public class Conditions {
