@@ -219,12 +219,12 @@ public class Robot extends CommandRobot {
   }
 
   private void addIntakeBindings(CommandOpMode opmode) {
-    var driverController = new CommandXboxController(1, opmode);
+    var codriverController = new CommandXboxController(1, opmode);
 
     // Deploy the intake with the X button
-    driverController.x().onTrue(intake.intakeCommand());
+    codriverController.x().onTrue(intake.intakeCommand());
     // Retract the intake with the Y button
-    driverController.y().onTrue(intake.retractCommand());
+    codriverController.y().onTrue(intake.retractCommand());
   }
 
   private void addArcadeDriveBindings(CommandOpMode opmode) {
