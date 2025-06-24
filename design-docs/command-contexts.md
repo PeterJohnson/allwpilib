@@ -84,7 +84,7 @@ Open question: Should allTeleop be renamed to allTeleoperated to match the Comma
 
 ## CommandOpMode
 
-In addition to providing the `Trigger`s described in [command opmodes](opmodes-commandbased.md), the `CommandOpMode` class extends `Context` extends `Context`, allowing any opmode to be used wherever a context is expected.  The condition of the `Context` is when the opmode is selected (regardless of enabled/disabled status).
+In addition to providing the `Trigger`s described in [command opmodes](opmodes-commandbased.md), the `CommandOpMode` class extends `Context`, allowing any opmode to be used wherever a context is expected.  The condition of the `Context` is when the opmode is selected (regardless of enabled/disabled status).
 
 Note that the `selected` trigger must have a base condition that has rising and falling edges.
 
