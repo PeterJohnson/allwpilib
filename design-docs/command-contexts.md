@@ -10,7 +10,9 @@ This documents proposes a solution to both easily specify restrictions for comma
 
 # Background
 
-*TODO* Describe the FTC and FRC status quo!
+Both FTC and FRC historically have had ways to automatically schedule commands in response to conditions such as driver inputs, but due to the different robot program setups, the methods and behaviors are different.  To provide context, a brief summary of these behaviors (as of 2025) is below:
+- In FRC, state naturally persists throughout the entire robot program, so command bindings last for the entire robot program execution.  (They are created when the robot program starts and last until the robot program ends.)
+- In FTC, opmodes should be as self contained as possible to avoid buggy behavior, so bindings are local to their opmode.  (They are created when the opmode starts and destroyed when the opmode ends)
 
 # Design
 
