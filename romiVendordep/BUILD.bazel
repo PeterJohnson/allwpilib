@@ -36,6 +36,7 @@ java_library(
     visibility = ["//visibility:public"],
     deps = [
         "//hal:hal-java",
+        "//telemetry:telemetry-java",
         "//wpilibj:wpilibj-java",
     ],
 )
