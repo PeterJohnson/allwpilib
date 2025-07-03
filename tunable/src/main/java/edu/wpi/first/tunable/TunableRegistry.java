@@ -73,8 +73,8 @@ public final class TunableRegistry {
    */
   public static void update() {
     synchronized (s_backends) {
-      for (var backend : s_backends) {
-        backend.update();
+      for (var entry : s_backends.entrySet()) {
+        entry.getValue().update();
       }
     }
   }

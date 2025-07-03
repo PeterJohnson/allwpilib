@@ -4,9 +4,12 @@
 
 package edu.wpi.first.tunable;
 
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
 /**
  * A tunable complex value.
- * 
+ *
  * @param <T> value class
  */
 public interface Tunable<T> extends Supplier<T>, Consumer<T> {
@@ -19,7 +22,7 @@ public interface Tunable<T> extends Supplier<T>, Consumer<T> {
   void setDefault(T value);
 
   /**
-   * Sets the value.
+   * Sets the value. The onChange() callback will be called if the value changed, but not immediately.
    *
    * @param value value
    */
@@ -30,6 +33,7 @@ public interface Tunable<T> extends Supplier<T>, Consumer<T> {
    *
    * @return value
    */
+  @Override
   T get();
 
   /**
@@ -37,7 +41,7 @@ public interface Tunable<T> extends Supplier<T>, Consumer<T> {
    * The callback is called by TunableRegistry.update(); this is typically called by RobotBase.periodic()
    * such that callbacks are called synchronously to the main periodic loop. Callbacks should be designed
    * to run as quickly as possible and not block.
-   * 
+   *
    * @param callback callback function
    */
   void onChange(Consumer<T> callback);

@@ -4,6 +4,9 @@
 
 package edu.wpi.first.tunable;
 
+import edu.wpi.first.util.protobuf.Protobuf;
+import edu.wpi.first.util.struct.Struct;
+
 public final class Tunables {
   /** The root {@link TunableTable}. */
   private static final TunableTable m_root = TunableRegistry.getTable("/");
@@ -39,7 +42,7 @@ public final class Tunables {
    * @param defaultValue the default value
    * @return Tunable
    */
-  public static IntegerTunable add(String name, int defaultValue) {
+  public static IntTunable add(String name, int defaultValue) {
     return m_root.add(name, defaultValue);
   }
 

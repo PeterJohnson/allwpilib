@@ -4,6 +4,9 @@
 
 package edu.wpi.first.tunable;
 
+import edu.wpi.first.util.protobuf.Protobuf;
+import edu.wpi.first.util.struct.Struct;
+
 public final class TunableTable {
   private final String m_path;
 
@@ -32,7 +35,7 @@ public final class TunableTable {
    * @return table
    */
   public TunableTable getTable(String name) {
-    return TunableRegistry.getTable(m_path + name + "/"));
+    return TunableRegistry.getTable(m_path + name + "/");
   }
 
   /**
@@ -43,9 +46,9 @@ public final class TunableTable {
    * @param defaultValue the default value
    * @return Tunable
    */
-  public IntegerTunable add(String name, int defaultValue) {
+  public IntTunable add(String name, int defaultValue) {
     String path = TunableRegistry.normalizeName(m_path + name);
-    return TunableRegistry.getBackend(path).addInteger(path, defaultValue);
+    return TunableRegistry.getBackend(path).addInt(path, defaultValue);
   }
 
   /**

@@ -4,10 +4,13 @@
 
 package edu.wpi.first.tunable;
 
+import java.util.function.IntConsumer;
+import java.util.function.IntSupplier;
+
 /**
  * A tunable integer.
  */
-public interface IntegerTunable extends IntegerSupplier, IntegerConsumer {
+public interface IntTunable extends IntSupplier, IntConsumer {
   /**
    * Sets the default value. A default value will never be used in preference to a
    * set value.
@@ -17,7 +20,7 @@ public interface IntegerTunable extends IntegerSupplier, IntegerConsumer {
   void setDefault(int value);
 
   /**
-   * Sets the value.
+   * Sets the value. The onChange() callback will be called if the value changed, but not immediately.
    *
    * @param value value
    */
@@ -35,13 +38,13 @@ public interface IntegerTunable extends IntegerSupplier, IntegerConsumer {
    * The callback is called by TunableRegistry.update(); this is typically called by RobotBase.periodic()
    * such that callbacks are called synchronously to the main periodic loop. Callbacks should be designed
    * to run as quickly as possible and not block.
-   * 
+   *
    * @param callback callback function
    */
-  void onChange(IntegerConsumer callback);
+  void onChange(IntConsumer callback);
 
   @Override
-  default int getAsInteger() {
+  default int getAsInt() {
     return get();
   }
 

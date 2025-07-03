@@ -4,6 +4,9 @@
 
 package edu.wpi.first.tunable;
 
+import edu.wpi.first.util.protobuf.Protobuf;
+import edu.wpi.first.util.struct.Struct;
+
 public interface TunableBackend {
   /**
    * Adds a tunable integer.
@@ -13,7 +16,7 @@ public interface TunableBackend {
    * @param defaultValue the default value
    * @return Tunable
    */
-  IntegerTunable addInteger(String name, int defaultValue);
+  IntTunable addInt(String name, int defaultValue);
 
   /**
    * Adds a tunable object.
@@ -46,4 +49,9 @@ public interface TunableBackend {
    * @return Tunable
    */
   <T> Tunable<T> addProtobuf(String name, T defaultValue, Protobuf<T, ?> proto);
+
+  /**
+   * Updates all tunable values and calls callbacks where appropriate.
+   */
+  void update();
 }
