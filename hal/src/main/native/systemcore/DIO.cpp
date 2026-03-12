@@ -30,9 +30,9 @@ HAL_DigitalHandle HAL_InitializeDIOPort(int32_t channel, HAL_Bool input,
   wpi::hal::init::CheckInit();
 
   if (channel < 0 || channel >= kNumSmartIo) {
-    *status = RESOURCE_OUT_OF_RANGE;
-    wpi::hal::SetLastErrorIndexOutOfRange(status, "Invalid Index for DIO", 0,
+    wpi::hal::SetLastErrorIndexOutOfRange(RESOURCE_OUT_OF_RANGE, "Invalid Index for DIO", 0,
                                           kNumSmartIo, channel);
+    *status = HAL_USE_LAST_ERROR;
     return HAL_kInvalidHandle;
   }
 
@@ -43,12 +43,13 @@ HAL_DigitalHandle HAL_InitializeDIOPort(int32_t channel, HAL_Bool input,
 
   if (*status != 0) {
     if (port) {
-      wpi::hal::SetLastErrorPreviouslyAllocated(status, "SmartIo", channel,
+      wpi::hal::SetLastErrorPreviouslyAllocated(*status, "SmartIo", channel,
                                                 port->previousAllocation);
     } else {
-      wpi::hal::SetLastErrorIndexOutOfRange(status, "Invalid Index for DIO", 0,
+      wpi::hal::SetLastErrorIndexOutOfRange(*status, "Invalid Index for DIO", 0,
                                             kNumSmartIo, channel);
     }
+    *status = HAL_USE_LAST_ERROR;
     return HAL_kInvalidHandle;  // failed to allocate. Pass error back.
   }
 

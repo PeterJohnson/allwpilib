@@ -196,9 +196,10 @@ HAL_REVPHHandle HAL_InitializeREVPH(int32_t busId, int32_t module,
                                     int32_t* status) {
   wpi::hal::init::CheckInit();
   if (!HAL_CheckREVPHModuleNumber(module)) {
-    *status = RESOURCE_OUT_OF_RANGE;
-    wpi::hal::SetLastErrorIndexOutOfRange(status, "Invalid Index for REV PH", 1,
+    wpi::hal::SetLastErrorIndexOutOfRange(RESOURCE_OUT_OF_RANGE,
+                                          "Invalid Index for REV PH", 1,
                                           kNumREVPHModules, module);
+    *status = HAL_USE_LAST_ERROR;
     return HAL_kInvalidHandle;
   }
 
@@ -207,12 +208,13 @@ HAL_REVPHHandle HAL_InitializeREVPH(int32_t busId, int32_t module,
   auto hph = REVPHHandles->Allocate(module - 1, &handle, status);
   if (*status != 0) {
     if (hph) {
-      wpi::hal::SetLastErrorPreviouslyAllocated(status, "REV PH", module,
+      wpi::hal::SetLastErrorPreviouslyAllocated(*status, "REV PH", module,
                                                 hph->previousAllocation);
     } else {
-      wpi::hal::SetLastErrorIndexOutOfRange(status, "Invalid Index for REV PH",
+      wpi::hal::SetLastErrorIndexOutOfRange(*status, "Invalid Index for REV PH",
                                             1, kNumREVPHModules, module);
     }
+    *status = HAL_USE_LAST_ERROR;
     return HAL_kInvalidHandle;  // failed to allocate. Pass error back.
   }
 
@@ -397,9 +399,9 @@ double HAL_GetREVPHAnalogVoltage(HAL_REVPHHandle handle, int32_t channel,
   }
 
   if (channel < 0 || channel > 1) {
-    *status = PARAMETER_OUT_OF_RANGE;
-    wpi::hal::SetLastErrorIndexOutOfRange(status, "Invalid REV Analog Index", 0,
-                                          2, channel);
+    wpi::hal::SetLastErrorIndexOutOfRange(
+        PARAMETER_OUT_OF_RANGE, "Invalid REV Analog Index", 0, 2, channel);
+    *status = HAL_USE_LAST_ERROR;
     return 0;
   }
 
@@ -600,19 +602,19 @@ void HAL_FireREVPHOneShot(HAL_REVPHHandle handle, int32_t index, int32_t durMs,
   }
 
   if (index >= kNumREVPHChannels || index < 0) {
-    *status = PARAMETER_OUT_OF_RANGE;
     wpi::hal::SetLastError(
-        status,
+        PARAMETER_OUT_OF_RANGE,
         fmt::format("Only [0-15] are valid index values. Requested {}", index));
+    *status = HAL_USE_LAST_ERROR;
     return;
   }
 
   if (!HAL_CheckREVPHPulseTime(durMs)) {
-    *status = PARAMETER_OUT_OF_RANGE;
     wpi::hal::SetLastError(
-        status,
+        PARAMETER_OUT_OF_RANGE,
         fmt::format("Time not within expected range [0-65534]. Requested {}",
                     durMs));
+    *status = HAL_USE_LAST_ERROR;
     return;
   }
 

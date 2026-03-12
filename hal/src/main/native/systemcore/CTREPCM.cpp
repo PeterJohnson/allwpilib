@@ -185,13 +185,14 @@ HAL_CTREPCMHandle HAL_InitializeCTREPCM(int32_t busId, int32_t module,
 
   if (*status != 0) {
     if (pcm) {
-      wpi::hal::SetLastErrorPreviouslyAllocated(status, "CTRE PCM", module,
+      wpi::hal::SetLastErrorPreviouslyAllocated(*status, "CTRE PCM", module,
                                                 pcm->previousAllocation);
     } else {
-      wpi::hal::SetLastErrorIndexOutOfRange(status,
+      wpi::hal::SetLastErrorIndexOutOfRange(*status,
                                             "Invalid Index for CTRE PCM", 0,
                                             kNumCTREPCMModules - 1, module);
     }
+    *status = HAL_USE_LAST_ERROR;
     return HAL_kInvalidHandle;  // failed to allocate. Pass error back.
   }
 
@@ -360,10 +361,10 @@ void HAL_ClearAllCTREPCMStickyFaults(HAL_CTREPCMHandle handle,
 void HAL_FireCTREPCMOneShot(HAL_CTREPCMHandle handle, int32_t index,
                             int32_t* status) {
   if (index > 7 || index < 0) {
-    *status = PARAMETER_OUT_OF_RANGE;
     wpi::hal::SetLastError(
-        status,
+        PARAMETER_OUT_OF_RANGE,
         fmt::format("Only [0-7] are valid index values. Requested {}", index));
+    *status = HAL_USE_LAST_ERROR;
     return;
   }
 
@@ -392,10 +393,10 @@ void HAL_FireCTREPCMOneShot(HAL_CTREPCMHandle handle, int32_t index,
 void HAL_SetCTREPCMOneShotDuration(HAL_CTREPCMHandle handle, int32_t index,
                                    int32_t durMs, int32_t* status) {
   if (index > 7 || index < 0) {
-    *status = PARAMETER_OUT_OF_RANGE;
     wpi::hal::SetLastError(
-        status,
+        PARAMETER_OUT_OF_RANGE,
         fmt::format("Only [0-7] are valid index values. Requested {}", index));
+    *status = HAL_USE_LAST_ERROR;
     return;
   }
 
@@ -410,9 +411,8 @@ void HAL_SetCTREPCMOneShotDuration(HAL_CTREPCMHandle handle, int32_t index,
   message.dataSize = 8;
 
   std::scoped_lock lock{pcm->lock};
-  pcm->oneShot.sol10MsPerUnit[index] =
-      (std::min)(static_cast<uint32_t>(durMs) / 10,
-                 static_cast<uint32_t>(0xFF));
+  pcm->oneShot.sol10MsPerUnit[index] = (std::min)(
+      static_cast<uint32_t>(durMs) / 10, static_cast<uint32_t>(0xFF));
   std::memcpy(message.data, pcm->oneShot.sol10MsPerUnit, 8);
   HAL_WriteCANPacketRepeating(pcm->canHandle, Control3, &message, SendPeriod,
                               status);

@@ -28,9 +28,10 @@ HAL_CounterHandle HAL_InitializeCounter(int channel, HAL_Bool risingEdge,
                                         int32_t* status) {
   wpi::hal::init::CheckInit();
   if (channel == InvalidHandleIndex || channel >= kNumSmartIo) {
-    *status = RESOURCE_OUT_OF_RANGE;
-    wpi::hal::SetLastErrorIndexOutOfRange(status, "Invalid Index for Counter",
-                                          0, kNumSmartIo, channel);
+    wpi::hal::SetLastErrorIndexOutOfRange(RESOURCE_OUT_OF_RANGE,
+                                          "Invalid Index for Counter", 0,
+                                          kNumSmartIo, channel);
+    *status = HAL_USE_LAST_ERROR;
     return HAL_kInvalidHandle;
   }
 
@@ -41,12 +42,13 @@ HAL_CounterHandle HAL_InitializeCounter(int channel, HAL_Bool risingEdge,
 
   if (*status != 0) {
     if (port) {
-      wpi::hal::SetLastErrorPreviouslyAllocated(status, "SmartIo", channel,
+      wpi::hal::SetLastErrorPreviouslyAllocated(*status, "SmartIo", channel,
                                                 port->previousAllocation);
     } else {
-      wpi::hal::SetLastErrorIndexOutOfRange(status, "Invalid Index for Counter",
-                                            0, kNumSmartIo, channel);
+      wpi::hal::SetLastErrorIndexOutOfRange(
+          *status, "Invalid Index for Counter", 0, kNumSmartIo, channel);
     }
+    *status = HAL_USE_LAST_ERROR;
     return HAL_kInvalidHandle;  // failed to allocate. Pass error back.
   }
 

@@ -161,15 +161,15 @@ void HAL_GetPowerDistributionAllChannelCurrents(
     int32_t currentsLength, int32_t* status) {
   if (IsCtre(handle)) {
     if (currentsLength < kNumCTREPDPChannels) {
-      *status = PARAMETER_OUT_OF_RANGE;
-      SetLastError(status, "Output array not large enough");
+      SetLastError(PARAMETER_OUT_OF_RANGE, "Output array not large enough");
+      *status = HAL_USE_LAST_ERROR;
       return;
     }
     return HAL_GetPDPAllChannelCurrents(handle, currents, status);
   } else {
     if (currentsLength < kNumREVPDHChannels) {
-      *status = PARAMETER_OUT_OF_RANGE;
-      SetLastError(status, "Output array not large enough");
+      SetLastError(PARAMETER_OUT_OF_RANGE, "Output array not large enough");
+      *status = HAL_USE_LAST_ERROR;
       return;
     }
     return HAL_GetREVPDHAllChannelCurrents(handle, currents, status);

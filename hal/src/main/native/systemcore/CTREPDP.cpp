@@ -133,9 +133,10 @@ HAL_PDPHandle HAL_InitializePDP(int32_t busId, int32_t module,
                                 int32_t* status) {
   wpi::hal::init::CheckInit();
   if (!HAL_CheckPDPModule(module)) {
-    *status = RESOURCE_OUT_OF_RANGE;
-    wpi::hal::SetLastErrorIndexOutOfRange(status, "Invalid Index for CTRE PDP",
-                                          0, kNumCTREPDPModules - 1, module);
+    wpi::hal::SetLastErrorIndexOutOfRange(RESOURCE_OUT_OF_RANGE,
+                                          "Invalid Index for CTRE PDP", 0,
+                                          kNumCTREPDPModules - 1, module);
+    *status = HAL_USE_LAST_ERROR;
     return HAL_kInvalidHandle;
   }
 
@@ -144,13 +145,14 @@ HAL_PDPHandle HAL_InitializePDP(int32_t busId, int32_t module,
 
   if (*status != 0) {
     if (pdp) {
-      wpi::hal::SetLastErrorPreviouslyAllocated(status, "CTRE PDP", module,
+      wpi::hal::SetLastErrorPreviouslyAllocated(*status, "CTRE PDP", module,
                                                 pdp->previousAllocation);
     } else {
-      wpi::hal::SetLastErrorIndexOutOfRange(status,
+      wpi::hal::SetLastErrorIndexOutOfRange(*status,
                                             "Invalid Index for CTRE PDP", 0,
                                             kNumCTREPDPModules - 1, module);
     }
+    *status = HAL_USE_LAST_ERROR;
     return HAL_kInvalidHandle;  // failed to allocate. Pass error back.
   }
 
@@ -231,9 +233,9 @@ double HAL_GetPDPVoltage(HAL_PDPHandle handle, int32_t* status) {
 double HAL_GetPDPChannelCurrent(HAL_PDPHandle handle, int32_t channel,
                                 int32_t* status) {
   if (!HAL_CheckPDPChannel(channel)) {
-    *status = PARAMETER_OUT_OF_RANGE;
-    wpi::hal::SetLastError(status,
+    wpi::hal::SetLastError(PARAMETER_OUT_OF_RANGE,
                            fmt::format("Invalid pdp channel {}", channel));
+    *status = HAL_USE_LAST_ERROR;
     return 0;
   }
 

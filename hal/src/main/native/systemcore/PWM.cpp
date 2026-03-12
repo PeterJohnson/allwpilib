@@ -32,9 +32,10 @@ HAL_DigitalHandle HAL_InitializePWMPort(int32_t channel,
   wpi::hal::init::CheckInit();
 
   if (channel < 0 || channel >= kNumSmartIo) {
-    *status = RESOURCE_OUT_OF_RANGE;
-    wpi::hal::SetLastErrorIndexOutOfRange(status, "Invalid Index for PWM", 0,
+    wpi::hal::SetLastErrorIndexOutOfRange(RESOURCE_OUT_OF_RANGE,
+                                          "Invalid Index for PWM", 0,
                                           kNumSmartIo, channel);
+    *status = HAL_USE_LAST_ERROR;
     return HAL_kInvalidHandle;
   }
 
@@ -45,12 +46,13 @@ HAL_DigitalHandle HAL_InitializePWMPort(int32_t channel,
 
   if (*status != 0) {
     if (port) {
-      wpi::hal::SetLastErrorPreviouslyAllocated(status, "SmartIo", channel,
+      wpi::hal::SetLastErrorPreviouslyAllocated(*status, "SmartIo", channel,
                                                 port->previousAllocation);
     } else {
-      wpi::hal::SetLastErrorIndexOutOfRange(status, "Invalid Index for PWM", 0,
+      wpi::hal::SetLastErrorIndexOutOfRange(*status, "Invalid Index for PWM", 0,
                                             kNumSmartIo, channel);
     }
+    *status = HAL_USE_LAST_ERROR;
     return HAL_kInvalidHandle;  // failed to allocate. Pass error back.
   }
 
@@ -113,11 +115,11 @@ void HAL_SetPWMPulseTimeMicroseconds(HAL_DigitalHandle pwmPortHandle,
 
   if (microsecondPulseTime < 0 ||
       (microsecondPulseTime != 0xFFFF && microsecondPulseTime >= 4096)) {
-    *status = PARAMETER_OUT_OF_RANGE;
     wpi::hal::SetLastError(
-        status,
+        PARAMETER_OUT_OF_RANGE,
         fmt::format("Pulse time {} out of range. Expect [0-4096) or 0xFFFF",
                     microsecondPulseTime));
+    *status = HAL_USE_LAST_ERROR;
     return;
   }
 
