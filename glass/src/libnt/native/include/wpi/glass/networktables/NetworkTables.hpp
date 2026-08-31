@@ -114,6 +114,9 @@ class NetworkTablesModel : public Model {
     /** Publisher (created when the value changes). */
     NT_Publisher publisher{0};
 
+    /** Whether this entry is shown only because an exact subscriber exists. */
+    bool subscriberOnly{false};
+
     std::vector<wpi::nt::meta::TopicPublisher> publishers;
     std::vector<wpi::nt::meta::TopicSubscriber> subscribers;
   };
@@ -186,6 +189,7 @@ class NetworkTablesModel : public Model {
   upb_Arena* GetProtobufArena() { return m_arena; }
 
  private:
+  bool UpdateSubscriberOnlyEntries();
   void RebuildTree();
   void RebuildTreeImpl(std::vector<TreeNode>* tree, int category);
   void UpdateClients(std::span<const uint8_t> data);

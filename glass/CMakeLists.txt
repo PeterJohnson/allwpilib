@@ -40,11 +40,6 @@ install(
     DESTINATION "${include_dest}/glass"
 )
 
-if(WPILIB_WITH_TESTS)
-    wpilib_add_test(glass src/test/native/cpp)
-    target_link_libraries(glass_test libglass)
-endif()
-
 #
 # libglassnt
 #
@@ -71,6 +66,11 @@ target_include_directories(
 install(TARGETS libglassnt EXPORT libglassnt)
 export(TARGETS libglassnt FILE libglassnt.cmake NAMESPACE libglassnt::)
 install(DIRECTORY src/libnt/native/include/ DESTINATION "${include_dest}/glass")
+
+if(WPILIB_WITH_TESTS)
+    wpilib_add_test(glass src/test/native/cpp)
+    target_link_libraries(glass_test libglassnt)
+endif()
 
 #
 # glass application
