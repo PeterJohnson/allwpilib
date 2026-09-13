@@ -7,11 +7,14 @@
 #include <stdint.h>
 
 #include <algorithm>
-#include <atomic>
 #include <chrono>
+#include <exception>
 #include <functional>
+#include <memory>
+#include <optional>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "wpi/util/condition_variable.hpp"
@@ -32,76 +35,275 @@ class promise<void>;
 
 namespace detail {
 
-class PromiseFactoryBase {
+enum class FutureStatus { PENDING, VALUE, ERROR, CANCELLED };
+
+class PromiseFactoryStateBase {
  public:
-  ~PromiseFactoryBase();
+  bool IsActive() const noexcept;
+  void Notify() noexcept;
 
-  bool IsActive() const { return m_active; }
+ protected:
+  mutable wpi::util::mutex m_resultMutex;
+  wpi::util::condition_variable m_resultCv;
+  bool m_closed = false;
+  uint64_t m_uid = 0;
+};
 
-  wpi::util::mutex& GetResultMutex() { return m_resultMutex; }
+template <typename T>
+struct FutureResult {
+  using Value = std::conditional_t<std::is_void_v<T>, std::monostate, T>;
 
-  void Notify() { m_resultCv.notify_all(); }
-
-  // must be called with locked lock == ResultMutex
-  void Wait(std::unique_lock<wpi::util::mutex>& lock) { m_resultCv.wait(lock); }
-
-  // returns false if timeout reached
-  template <class Clock, class Duration>
-  bool WaitUntil(std::unique_lock<wpi::util::mutex>& lock,
-                 const std::chrono::time_point<Clock, Duration>& timeout_time) {
-    return m_resultCv.wait_until(lock, timeout_time) ==
-           std::cv_status::no_timeout;
+  FutureResult() = default;
+  explicit FutureResult(FutureStatus status_) : status{status_} {}
+  FutureResult(FutureResult&& other) noexcept { *this = std::move(other); }
+  FutureResult& operator=(FutureResult&& other) noexcept {
+    status = other.status;
+    error = std::move(other.error);
+    value.reset();
+    if (other.value) {
+      // A throwing value move must settle the request, including when the
+      // request vector grows or erases an entry.
+      try {
+        value.emplace(std::move(*other.value));
+      } catch (...) {
+        status = FutureStatus::ERROR;
+        error = std::current_exception();
+      }
+    }
+    return *this;
   }
 
-  void IgnoreResult(uint64_t request);
+  bool IsReady() const {
+    return status == FutureStatus::VALUE || status == FutureStatus::ERROR;
+  }
 
-  uint64_t CreateRequest();
+  FutureStatus status = FutureStatus::PENDING;
+  std::optional<Value> value;
+  std::exception_ptr error;
+};
 
-  // returns true if request was pending
-  // must be called with ResultMutex held
-  bool EraseRequest(uint64_t request);
+// One shared allocation per factory; requests and continuations stay in
+// vectors. Handles retain this state, while continuations refer weakly to their
+// output state so that chains do not create ownership cycles.
+template <typename T>
+class PromiseFactoryState final : public PromiseFactoryStateBase {
+ public:
+  using Result = FutureResult<T>;
+  using ThenFunction = std::function<void(Result&)>;
 
-  // same as doing CreateRequest() followed by EraseRequest()
-  // must be called with ResultMutex held
-  uint64_t CreateErasedRequest() { return ++m_uid; }
+  uint64_t CreateRequest() {
+    std::scoped_lock lock(m_resultMutex);
+    if (m_closed) {
+      return 0;
+    }
+    uint64_t request = ++m_uid;
+    m_requests.emplace_back(request);
+    return request;
+  }
+
+  void Close() noexcept {
+    std::vector<Then> thens;
+    {
+      std::scoped_lock lock(m_resultMutex);
+      if (m_closed) {
+        return;
+      }
+      m_closed = true;
+      for (auto& request : m_requests) {
+        if (request.result.status == FutureStatus::PENDING) {
+          request.result.status = FutureStatus::CANCELLED;
+        }
+      }
+      thens.swap(m_thens);
+    }
+    Notify();
+    // Propagate cancellation and destroy continuation captures outside the
+    // mutex; either can access another factory or reenter this one.
+    for (auto& then : thens) {
+      Result result{FutureStatus::CANCELLED};
+      then.func(result);
+    }
+  }
+
+  void IgnoreResult(uint64_t request) {
+    Cancel(request);
+    Result ignored;
+    std::scoped_lock lock(m_resultMutex);
+    auto it = FindRequest(request);
+    if (it != m_requests.end()) {
+      ignored = std::move(it->result);
+      m_requests.erase(it);
+    }
+  }
+
+  template <typename U>
+  void SetValue(uint64_t request, U&& value) {
+    std::unique_lock lock(m_resultMutex);
+    auto it = FindRequest(request);
+    if (it == m_requests.end() || it->result.status != FutureStatus::PENDING) {
+      return;
+    }
+    Result result;
+    try {
+      result.value.emplace(std::forward<U>(value));
+      result.status = FutureStatus::VALUE;
+    } catch (...) {
+      result.status = FutureStatus::ERROR;
+      result.error = std::current_exception();
+    }
+    Finish(lock, it, result);
+  }
+
+  void SetDefaultValue(uint64_t request) noexcept {
+    std::unique_lock lock(m_resultMutex);
+    auto it = FindRequest(request);
+    if (it == m_requests.end() || it->result.status != FutureStatus::PENDING) {
+      return;
+    }
+    Result result;
+    try {
+      result.value.emplace();
+      result.status = FutureStatus::VALUE;
+    } catch (...) {
+      result.status = FutureStatus::ERROR;
+      result.error = std::current_exception();
+    }
+    Finish(lock, it, result);
+  }
+
+  void SetException(uint64_t request, std::exception_ptr error) {
+    Result result{FutureStatus::ERROR};
+    result.error = std::move(error);
+    Complete(request, result);
+  }
+
+  void Cancel(uint64_t request) noexcept {
+    Result result{FutureStatus::CANCELLED};
+    Complete(request, result);
+  }
+
+  void SetThen(uint64_t request, ThenFunction func) {
+    Result result{FutureStatus::CANCELLED};
+    {
+      std::scoped_lock lock(m_resultMutex);
+      auto it = FindRequest(request);
+      if (it != m_requests.end()) {
+        if (it->result.status == FutureStatus::PENDING) {
+          m_thens.emplace_back(request, std::move(func));
+          return;
+        }
+        result = std::move(it->result);
+        m_requests.erase(it);
+      }
+    }
+    func(result);
+  }
+
+  bool IsReady(uint64_t request) noexcept {
+    std::scoped_lock lock(m_resultMutex);
+    auto it = FindRequest(request);
+    return it != m_requests.end() && it->result.IsReady();
+  }
+
+  T GetResult(uint64_t request) {
+    Result result{FutureStatus::CANCELLED};
+    {
+      std::unique_lock lock(m_resultMutex);
+      m_resultCv.wait(lock, [&] { return IsFinished(request); });
+      auto it = FindRequest(request);
+      if (it != m_requests.end()) {
+        result = std::move(it->result);
+        m_requests.erase(it);
+      }
+    }
+    if (result.status == FutureStatus::ERROR) {
+      std::rethrow_exception(result.error);
+    }
+    if constexpr (!std::is_void_v<T>) {
+      return result.value ? std::move(*result.value) : T{};
+    }
+  }
+
+  void WaitResult(uint64_t request) {
+    std::unique_lock lock(m_resultMutex);
+    m_resultCv.wait(lock, [&] { return IsFinished(request); });
+  }
+
+  template <class Clock, class Duration>
+  bool WaitResultUntil(
+      uint64_t request,
+      const std::chrono::time_point<Clock, Duration>& timeout_time) {
+    std::unique_lock lock(m_resultMutex);
+    m_resultCv.wait_until(lock, timeout_time,
+                          [&] { return IsFinished(request); });
+    auto it = FindRequest(request);
+    return it != m_requests.end() && it->result.IsReady();
+  }
 
  private:
-  wpi::util::mutex m_resultMutex;
-  std::atomic_bool m_active{true};
-  wpi::util::condition_variable m_resultCv;
+  struct Request {
+    explicit Request(uint64_t id_) : id{id_} {}
+    uint64_t id;
+    Result result;
+  };
 
-  uint64_t m_uid = 0;
-  std::vector<uint64_t> m_requests;
+  struct Then {
+    Then(uint64_t request_, ThenFunction func_)
+        : request{request_}, func{std::move(func_)} {}
+    uint64_t request;
+    ThenFunction func;
+  };
+
+  // All request lookups require the mutex.  Look up by ID again after waiting;
+  // another request can reallocate or erase entries in the vector.
+  auto FindRequest(uint64_t request) {
+    return std::find_if(m_requests.begin(), m_requests.end(),
+                        [=](const auto& entry) { return entry.id == request; });
+  }
+
+  bool IsFinished(uint64_t request) {
+    auto it = FindRequest(request);
+    return it == m_requests.end() || it->result.status != FutureStatus::PENDING;
+  }
+
+  void Complete(uint64_t request, Result& result) {
+    std::unique_lock lock(m_resultMutex);
+    auto it = FindRequest(request);
+    if (it != m_requests.end() && it->result.status == FutureStatus::PENDING) {
+      Finish(lock, it, result);
+    }
+  }
+
+  void Finish(std::unique_lock<wpi::util::mutex>& lock,
+              typename std::vector<Request>::iterator request, Result& result) {
+    ThenFunction func;
+    auto then = std::find_if(
+        m_thens.begin(), m_thens.end(),
+        [&](const auto& entry) { return entry.request == request->id; });
+    if (then != m_thens.end()) {
+      func = std::move(then->func);
+      m_thens.erase(then);
+      m_requests.erase(request);
+    } else {
+      request->result = std::move(result);
+    }
+    lock.unlock();
+    Notify();
+    if (func) {
+      func(result);
+    }
+  }
+
+  std::vector<Request> m_requests;
+  std::vector<Then> m_thens;
 };
 
 template <typename To, typename From>
 struct FutureThen {
   template <typename F>
-  static future<To> Create(PromiseFactory<From>& fromFactory, uint64_t request,
-                           PromiseFactory<To>& factory, F&& func);
-};
-
-template <typename From>
-struct FutureThen<void, From> {
-  template <typename F>
-  static future<void> Create(PromiseFactory<From>& fromFactory,
-                             uint64_t request, PromiseFactory<void>& factory,
-                             F&& func);
-};
-
-template <typename To>
-struct FutureThen<To, void> {
-  template <typename F>
-  static future<To> Create(PromiseFactory<void>& fromFactory, uint64_t request,
-                           PromiseFactory<To>& factory, F&& func);
-};
-
-template <>
-struct FutureThen<void, void> {
-  template <typename F>
-  static future<void> Create(PromiseFactory<void>& fromFactory,
-                             uint64_t request, PromiseFactory<void>& factory,
-                             F&& func);
+  static future<To> Create(
+      const std::shared_ptr<PromiseFactoryState<From>>& from, uint64_t request,
+      PromiseFactory<To>& factory, F&& func);
 };
 
 }  // namespace detail
@@ -109,22 +311,70 @@ struct FutureThen<void, void> {
 /**
  * A promise factory for lightweight futures.
  *
- * The lifetime of the factory must be ensured to be longer than any futures
- * it creates.
+ * Futures and promises share one state allocation per factory and may outlive
+ * the factory. Closing or destroying the factory cancels pending requests;
+ * completed results remain available. Request storage can allocate as it grows.
+ * Calls on the factory itself still require the factory to be alive.
  *
  * Use CreateRequest() to create the future request id, and then CreateFuture()
  * and CreatePromise() to create future and promise objects.  A promise should
- * only be created once for any given request id.
+ * only be created once for any given request id, as should a future.
  *
  * @tparam T the "return" type of the promise/future
  */
 template <typename T>
-class PromiseFactory final : public detail::PromiseFactoryBase {
+class PromiseFactory final {
   friend class future<T>;
+  friend class promise<T>;
+  template <typename To, typename From>
+  friend struct detail::FutureThen;
 
  public:
-  using detail::PromiseFactoryBase::Notify;
-  using ThenFunction = std::function<void(uint64_t, T)>;
+  /** Constructs a factory with shared state for its requests. */
+  PromiseFactory() = default;
+
+  /**
+   * Cancels pending requests, retaining completed results for their futures.
+   */
+  ~PromiseFactory() { Close(); }
+
+  PromiseFactory(const PromiseFactory&) = delete;
+  PromiseFactory& operator=(const PromiseFactory&) = delete;
+  PromiseFactory(PromiseFactory&&) = delete;
+  PromiseFactory& operator=(PromiseFactory&&) = delete;
+
+  /**
+   * Cancels pending requests and prevents new requests. Safe to call
+   * repeatedly. Cancelled futures return a default value from get() and false
+   * from timed waits. Their continuations are cancelled without calling user
+   * functions. Continuations already selected for execution may run after
+   * this call returns.
+   */
+  void Close() noexcept {
+    auto state = m_state;
+    state->Close();
+  }
+
+  /** @return True if the factory is accepting requests. */
+  bool IsActive() const noexcept { return m_state->IsActive(); }
+
+  /** Wakes threads waiting for results. Does not change request state. */
+  void Notify() noexcept {
+    auto state = m_state;
+    state->Notify();
+  }
+
+  /** @return A new request ID, or zero if the factory is closed. */
+  uint64_t CreateRequest() { return m_state->CreateRequest(); }
+
+  /**
+   * Discards a pending request or its unconsumed result.
+   * @param request the request ID
+   */
+  void IgnoreResult(uint64_t request) {
+    auto state = m_state;
+    state->IgnoreResult(request);
+  }
 
   /**
    * Creates a future.
@@ -137,7 +387,8 @@ class PromiseFactory final : public detail::PromiseFactoryBase {
   /**
    * Creates a future and makes it immediately ready.
    *
-   * @return the future
+   * @param value the result
+   * @return the future, or an invalid future if closed
    */
   future<T> MakeReadyFuture(T&& value);
 
@@ -167,54 +418,124 @@ class PromiseFactory final : public detail::PromiseFactoryBase {
    */
   void SetValue(uint64_t request, T&& value);
 
-  void SetThen(uint64_t request, uint64_t outRequest, ThenFunction func);
+  /**
+   * Checks whether a request has a result or an exception.
+   * @param request the request ID
+   * @return False for pending, cancelled, or consumed requests
+   */
+  bool IsReady(uint64_t request) noexcept { return m_state->IsReady(request); }
 
-  bool IsReady(uint64_t request) noexcept;
-  T GetResult(uint64_t request);
-  void WaitResult(uint64_t request);
+  /**
+   * Waits for and consumes a result, rethrowing any stored exception.
+   * @param request the request ID
+   * @return The result, or a default value if cancelled
+   */
+  T GetResult(uint64_t request) {
+    auto state = m_state;
+    return state->GetResult(request);
+  }
+
+  /**
+   * Waits until a request completes or is cancelled.
+   * @param request the request ID
+   */
+  void WaitResult(uint64_t request) {
+    auto state = m_state;
+    state->WaitResult(request);
+  }
+
+  /**
+   * Waits for a request to complete, be cancelled, or reach the deadline.
+   * @param request the request ID
+   * @param timeout_time the deadline
+   * @return True for a result or exception, false for cancellation or timeout
+   */
   template <class Clock, class Duration>
   bool WaitResultUntil(
       uint64_t request,
-      const std::chrono::time_point<Clock, Duration>& timeout_time);
+      const std::chrono::time_point<Clock, Duration>& timeout_time) {
+    auto state = m_state;
+    return state->WaitResultUntil(request, timeout_time);
+  }
 
+  /** @return The default factory for this result type. */
   static PromiseFactory& GetInstance();
 
  private:
-  struct Then {
-    Then(uint64_t request_, uint64_t outRequest_, ThenFunction func_)
-        : request(request_), outRequest(outRequest_), func(std::move(func_)) {}
-    uint64_t request;
-    uint64_t outRequest;
-    ThenFunction func;
-  };
-
-  std::vector<Then> m_thens;
-  std::vector<std::pair<uint64_t, T>> m_results;
+  std::shared_ptr<detail::PromiseFactoryState<T>> m_state =
+      std::make_shared<detail::PromiseFactoryState<T>>();
 };
 
 /**
  * Explicit specialization for PromiseFactory<void>.
+ * Shares the same lifetime and cancellation behavior as PromiseFactory<T>.
  */
 template <>
-class PromiseFactory<void> final : public detail::PromiseFactoryBase {
+class PromiseFactory<void> final {
   friend class future<void>;
+  friend class promise<void>;
+  template <typename To, typename From>
+  friend struct detail::FutureThen;
 
  public:
-  using detail::PromiseFactoryBase::Notify;
-  using ThenFunction = std::function<void(uint64_t)>;
+  /** Constructs a factory with shared state for its requests. */
+  PromiseFactory() = default;
+
+  /**
+   * Cancels pending requests, retaining completed results for their futures.
+   */
+  ~PromiseFactory() { Close(); }
+
+  PromiseFactory(const PromiseFactory&) = delete;
+  PromiseFactory& operator=(const PromiseFactory&) = delete;
+  PromiseFactory(PromiseFactory&&) = delete;
+  PromiseFactory& operator=(PromiseFactory&&) = delete;
+
+  /**
+   * Cancels pending requests and prevents new requests. Safe to call
+   * repeatedly. Cancelled futures return a default value from get() and false
+   * from timed waits. Their continuations are cancelled without calling user
+   * functions. Continuations already selected for execution may run after
+   * this call returns.
+   */
+  void Close() noexcept {
+    auto state = m_state;
+    state->Close();
+  }
+
+  /** @return True if the factory is accepting requests. */
+  bool IsActive() const noexcept { return m_state->IsActive(); }
+
+  /** Wakes threads waiting for results. Does not change request state. */
+  void Notify() noexcept {
+    auto state = m_state;
+    state->Notify();
+  }
+
+  /** @return A new request ID, or zero if the factory is closed. */
+  uint64_t CreateRequest() { return m_state->CreateRequest(); }
+
+  /**
+   * Discards a pending request or its unconsumed result.
+   * @param request the request ID
+   */
+  void IgnoreResult(uint64_t request) {
+    auto state = m_state;
+    state->IgnoreResult(request);
+  }
 
   /**
    * Creates a future.
    *
    * @param request the request id returned by CreateRequest()
-   * @return std::pair of the future and the request id
+   * @return the future
    */
   future<void> CreateFuture(uint64_t request);
 
   /**
    * Creates a future and makes it immediately ready.
    *
-   * @return the future
+   * @return the future, or an invalid future if closed
    */
   future<void> MakeReadyFuture();
 
@@ -228,35 +549,57 @@ class PromiseFactory<void> final : public detail::PromiseFactoryBase {
 
   /**
    * Sets a value directly for a future without creating a promise object.
-   * Identical to `promise(factory, request).set_value()`.
+   * Identical to `CreatePromise(request).set_value()`.
    *
    * @param request request id, as returned by CreateRequest()
    */
   void SetValue(uint64_t request);
 
-  void SetThen(uint64_t request, uint64_t outRequest, ThenFunction func);
+  /**
+   * Checks whether a request has a result or an exception.
+   * @param request the request ID
+   * @return False for pending, cancelled, or consumed requests
+   */
+  bool IsReady(uint64_t request) noexcept { return m_state->IsReady(request); }
 
-  bool IsReady(uint64_t request) noexcept;
-  void GetResult(uint64_t request);
-  void WaitResult(uint64_t request);
+  /**
+   * Waits for and consumes a result, rethrowing any stored exception.
+   * @param request the request ID
+   */
+  void GetResult(uint64_t request) {
+    auto state = m_state;
+    state->GetResult(request);
+  }
+
+  /**
+   * Waits until a request completes or is cancelled.
+   * @param request the request ID
+   */
+  void WaitResult(uint64_t request) {
+    auto state = m_state;
+    state->WaitResult(request);
+  }
+
+  /**
+   * Waits for a request to complete, be cancelled, or reach the deadline.
+   * @param request the request ID
+   * @param timeout_time the deadline
+   * @return True for a result or exception, false for cancellation or timeout
+   */
   template <class Clock, class Duration>
   bool WaitResultUntil(
       uint64_t request,
-      const std::chrono::time_point<Clock, Duration>& timeout_time);
+      const std::chrono::time_point<Clock, Duration>& timeout_time) {
+    auto state = m_state;
+    return state->WaitResultUntil(request, timeout_time);
+  }
 
+  /** @return The default factory for this result type. */
   static PromiseFactory& GetInstance();
 
  private:
-  struct Then {
-    Then(uint64_t request_, uint64_t outRequest_, ThenFunction func_)
-        : request(request_), outRequest(outRequest_), func(std::move(func_)) {}
-    uint64_t request;
-    uint64_t outRequest;
-    ThenFunction func;
-  };
-
-  std::vector<Then> m_thens;
-  std::vector<uint64_t> m_results;
+  std::shared_ptr<detail::PromiseFactoryState<void>> m_state =
+      std::make_shared<detail::PromiseFactoryState<void>>();
 };
 
 /**
@@ -277,69 +620,101 @@ class future final {
    */
   future() noexcept = default;
 
+  /**
+   * Moves a future, leaving the source invalid.
+   * @param oth the source future
+   */
   future(future&& oth) noexcept {
     this->m_request = oth.m_request;
-    this->m_promises = oth.m_promises;
+    this->m_state = std::move(oth.m_state);
     oth.m_request = 0;
-    oth.m_promises = nullptr;
+    oth.m_state = nullptr;
   }
   future(const future&) = delete;
 
+  /**
+   * Consumes a future and converts its result using a continuation.
+   * @param oth the source future
+   */
   template <typename R>
-  future(future<R>&& oth) noexcept  // NOLINT
+  future(future<R>&& oth)  // NOLINT
       : future(oth.then([](R&& val) -> T { return val; })) {}
 
   /**
    * Ignores the result of the future if it has not been retrieved.
    */
   ~future() {
-    if (m_promises) {
-      m_promises->IgnoreResult(m_request);
+    if (m_state) {
+      m_state->IgnoreResult(m_request);
     }
   }
 
+  /**
+   * Discards this future's result and moves another future into it.
+   * @param oth the source future
+   * @return This future
+   */
   future& operator=(future&& oth) noexcept {
-    this->m_request = oth.m_request;
-    this->m_promises = oth.m_promises;
-    oth.m_request = 0;
-    oth.m_promises = nullptr;
+    if (this != &oth) {
+      future old{std::move(*this)};
+      m_request = std::exchange(oth.m_request, 0);
+      m_state = std::move(oth.m_state);
+    }
     return *this;
   }
+
   future& operator=(const future&) = delete;
 
   /**
    * Gets the value.  Calls wait() if the value is not yet available.
    * Can only be called once.  The future will be marked invalid after the call.
    *
+   * Rethrows any stored exception. Returns a default value if cancelled.
+   *
    * @return The value provided by the corresponding promise.set_value().
    */
   T get() {
-    if (m_promises) {
-      return m_promises->GetResult(m_request);
+    if (m_state) {
+      auto state = std::move(m_state);
+      return state->GetResult(m_request);
     } else {
       return T();
     }
   }
 
+  /**
+   * Consumes this future and runs a function when its result is available.
+   * Cancellation propagates without calling the function. Exceptions from the
+   * function are stored in the returned future and rethrown by get().
+   * @param factory factory for the returned future
+   * @param func continuation function
+   * @return A future for the continuation's result
+   */
   template <typename R, typename F>
   future<R> then(PromiseFactory<R>& factory, F&& func) {
-    if (m_promises) {
-      auto promises = m_promises;
-      m_promises = nullptr;
-      return detail::FutureThen<R, T>::Create(*promises, m_request, factory,
-                                              func);
-    } else {
+    if (!m_state) {
       return future<R>();
     }
+    future input{std::move(*this)};
+    auto out = detail::FutureThen<R, T>::Create(input.m_state, input.m_request,
+                                                factory, std::forward<F>(func));
+    input.m_state.reset();
+    return out;
   }
 
+  /**
+   * Chains a continuation using the default factory for its result type.
+   * @param func continuation function
+   * @return A future for the continuation's result
+   */
   template <typename F, typename R = typename std::invoke_result_t<F&&, T&&>>
   future<R> then(F&& func) {
     return then(PromiseFactory<R>::GetInstance(), std::forward<F>(func));
   }
 
+  /** @return True for a value or exception, false if pending or cancelled. */
   bool is_ready() const noexcept {
-    return m_promises && m_promises->IsReady(m_request);
+    return m_state && m_state->IsReady(m_request);
   }
 
   /**
@@ -348,17 +723,18 @@ class future final {
    *
    * @return True if valid
    */
-  bool valid() const noexcept { return m_promises; }
+  bool valid() const noexcept { return static_cast<bool>(m_state); }
 
   /**
    * Waits for the promise to provide a value.
    * Does not return until the value is available or the promise is destroyed
    * (in which case a default-constructed value is "returned").
+   * Also returns if the factory closes and cancels the request.
    * If the value has already been provided, returns immediately.
    */
   void wait() const {
-    if (m_promises) {
-      m_promises->WaitResult(m_request);
+    if (m_state) {
+      m_state->WaitResult(m_request);
     }
   }
 
@@ -366,19 +742,19 @@ class future final {
    * Waits for the promise to provide a value, or the specified time has been
    * reached.
    *
-   * @return True if the promise provided a value, false if timed out.
+   * @return True for a value or exception, false if cancelled or timed out.
    */
   template <class Clock, class Duration>
   bool wait_until(
       const std::chrono::time_point<Clock, Duration>& timeout_time) const {
-    return m_promises && m_promises->WaitResultUntil(m_request, timeout_time);
+    return m_state && m_state->WaitResultUntil(m_request, timeout_time);
   }
 
   /**
    * Waits for the promise to provide a value, or the specified amount of time
    * has elapsed.
    *
-   * @return True if the promise provided a value, false if timed out.
+   * @return True for a value or exception, false if cancelled or timed out.
    */
   template <class Rep, class Period>
   bool wait_for(
@@ -387,11 +763,12 @@ class future final {
   }
 
  private:
-  future(PromiseFactory<T>* promises, uint64_t request) noexcept
-      : m_request(request), m_promises(promises) {}
+  future(std::shared_ptr<detail::PromiseFactoryState<T>> state,
+         uint64_t request) noexcept
+      : m_request(request), m_state(request ? std::move(state) : nullptr) {}
 
   uint64_t m_request = 0;
-  PromiseFactory<T>* m_promises = nullptr;
+  std::shared_ptr<detail::PromiseFactoryState<T>> m_state;
 };
 
 /**
@@ -408,11 +785,15 @@ class future<void> final {
    */
   future() noexcept = default;
 
+  /**
+   * Moves a future, leaving the source invalid.
+   * @param oth the source future
+   */
   future(future&& oth) noexcept {
     m_request = oth.m_request;
-    m_promises = oth.m_promises;
+    m_state = std::move(oth.m_state);
     oth.m_request = 0;
-    oth.m_promises = nullptr;
+    oth.m_state = nullptr;
   }
   future(const future&) = delete;
 
@@ -420,49 +801,72 @@ class future<void> final {
    * Ignores the result of the future if it has not been retrieved.
    */
   ~future() {
-    if (m_promises) {
-      m_promises->IgnoreResult(m_request);
+    if (m_state) {
+      m_state->IgnoreResult(m_request);
     }
   }
 
+  /**
+   * Discards this future's result and moves another future into it.
+   * @param oth the source future
+   * @return This future
+   */
   future& operator=(future&& oth) noexcept {
-    m_request = oth.m_request;
-    m_promises = oth.m_promises;
-    oth.m_request = 0;
-    oth.m_promises = nullptr;
+    if (this != &oth) {
+      future old{std::move(*this)};
+      m_request = std::exchange(oth.m_request, 0);
+      m_state = std::move(oth.m_state);
+    }
     return *this;
   }
+
   future& operator=(const future&) = delete;
 
   /**
    * Gets the value.  Calls wait() if the value is not yet available.
    * Can only be called once.  The future will be marked invalid after the call.
+   * Rethrows any stored exception. Returns normally if cancelled.
    */
   void get() {
-    if (m_promises) {
-      m_promises->GetResult(m_request);
+    if (m_state) {
+      auto state = std::move(m_state);
+      state->GetResult(m_request);
     }
   }
 
+  /**
+   * Consumes this future and runs a function when its result is available.
+   * Cancellation propagates without calling the function. Exceptions from the
+   * function are stored in the returned future and rethrown by get().
+   * @param factory factory for the returned future
+   * @param func continuation function
+   * @return A future for the continuation's result
+   */
   template <typename R, typename F>
   future<R> then(PromiseFactory<R>& factory, F&& func) {
-    if (m_promises) {
-      auto promises = m_promises;
-      m_promises = nullptr;
-      return detail::FutureThen<R, void>::Create(*promises, m_request, factory,
-                                                 func);
-    } else {
+    if (!m_state) {
       return future<R>();
     }
+    future input{std::move(*this)};
+    auto out = detail::FutureThen<R, void>::Create(
+        input.m_state, input.m_request, factory, std::forward<F>(func));
+    input.m_state.reset();
+    return out;
   }
 
+  /**
+   * Chains a continuation using the default factory for its result type.
+   * @param func continuation function
+   * @return A future for the continuation's result
+   */
   template <typename F, typename R = typename std::invoke_result_t<F&&>>
   future<R> then(F&& func) {
     return then(PromiseFactory<R>::GetInstance(), std::forward<F>(func));
   }
 
+  /** @return True for a value or exception, false if pending or cancelled. */
   bool is_ready() const noexcept {
-    return m_promises && m_promises->IsReady(m_request);
+    return m_state && m_state->IsReady(m_request);
   }
 
   /**
@@ -471,16 +875,17 @@ class future<void> final {
    *
    * @return True if valid
    */
-  bool valid() const noexcept { return m_promises; }
+  bool valid() const noexcept { return static_cast<bool>(m_state); }
 
   /**
    * Waits for the promise to provide a value.
-   * Does not return until the value is available or the promise is destroyed
+   * Does not return until the value is available or the promise is destroyed.
+   * Also returns if the factory closes and cancels the request.
    * If the value has already been provided, returns immediately.
    */
   void wait() const {
-    if (m_promises) {
-      m_promises->WaitResult(m_request);
+    if (m_state) {
+      m_state->WaitResult(m_request);
     }
   }
 
@@ -488,19 +893,19 @@ class future<void> final {
    * Waits for the promise to provide a value, or the specified time has been
    * reached.
    *
-   * @return True if the promise provided a value, false if timed out.
+   * @return True for a value or exception, false if cancelled or timed out.
    */
   template <class Clock, class Duration>
   bool wait_until(
       const std::chrono::time_point<Clock, Duration>& timeout_time) const {
-    return m_promises && m_promises->WaitResultUntil(m_request, timeout_time);
+    return m_state && m_state->WaitResultUntil(m_request, timeout_time);
   }
 
   /**
    * Waits for the promise to provide a value, or the specified amount of time
    * has elapsed.
    *
-   * @return True if the promise provided a value, false if timed out.
+   * @return True for a value or exception, false if cancelled or timed out.
    */
   template <class Rep, class Period>
   bool wait_for(
@@ -509,11 +914,12 @@ class future<void> final {
   }
 
  private:
-  future(PromiseFactory<void>* promises, uint64_t request) noexcept
-      : m_request(request), m_promises(promises) {}
+  future(std::shared_ptr<detail::PromiseFactoryState<void>> state,
+         uint64_t request) noexcept
+      : m_request(request), m_state(request ? std::move(state) : nullptr) {}
 
   uint64_t m_request = 0;
-  PromiseFactory<void>* m_promises = nullptr;
+  std::shared_ptr<detail::PromiseFactoryState<void>> m_state;
 };
 
 /**
@@ -529,16 +935,20 @@ class promise final {
 
  public:
   /**
-   * Constructs an empty promise.
+   * Constructs a pending promise using the default factory.
    */
-  promise() : m_promises(&PromiseFactory<T>::GetInstance()) {
-    m_request = m_promises->CreateRequest();
+  promise() : m_state(PromiseFactory<T>::GetInstance().m_state) {
+    m_request = m_state->CreateRequest();
   }
 
+  /**
+   * Moves a promise, leaving the source empty.
+   * @param oth the source promise
+   */
   promise(promise&& oth) noexcept
-      : m_request(oth.m_request), m_promises(oth.m_promises) {
+      : m_request(oth.m_request), m_state(std::move(oth.m_state)) {
     oth.m_request = 0;
-    oth.m_promises = nullptr;
+    oth.m_state = nullptr;
   }
 
   promise(const promise&) = delete;
@@ -547,16 +957,23 @@ class promise final {
    * Sets the promised value to a default-constructed T if not already set.
    */
   ~promise() {
-    if (m_promises) {
-      m_promises->SetValue(m_request, T());
+    if (auto state = std::move(m_state)) {
+      state->SetDefaultValue(m_request);
     }
   }
 
+  /**
+   * Supplies a default value for this promise and moves another promise into
+   * it.
+   * @param oth the source promise
+   * @return This promise
+   */
   promise& operator=(promise&& oth) noexcept {
-    m_request = oth.m_request;
-    m_promises = oth.m_promises;
-    oth.m_request = 0;
-    oth.m_promises = nullptr;
+    if (this != &oth) {
+      promise old{std::move(*this)};
+      m_request = std::exchange(oth.m_request, 0);
+      m_state = std::move(oth.m_state);
+    }
     return *this;
   }
 
@@ -564,18 +981,19 @@ class promise final {
 
   /**
    * Swaps this promise with another one.
+   * @param oth the other promise
    */
   void swap(promise& oth) noexcept {
     std::swap(m_request, oth.m_request);
-    std::swap(m_promises, oth.m_promises);
+    std::swap(m_state, oth.m_state);
   }
 
   /**
-   * Gets a future for this promise.
+   * Gets a future for this promise. Must only be called once per request.
    *
    * @return The future
    */
-  future<T> get_future() noexcept { return future<T>(m_promises, m_request); }
+  future<T> get_future() noexcept { return future<T>(m_state, m_request); }
 
   /**
    * Sets the promised value.
@@ -584,10 +1002,10 @@ class promise final {
    * @param value The value to provide to the waiting future
    */
   void set_value(const T& value) {
-    if (m_promises) {
-      m_promises->SetValue(m_request, value);
+    if (m_state) {
+      auto state = std::move(m_state);
+      state->SetValue(m_request, value);
     }
-    m_promises = nullptr;
   }
 
   /**
@@ -597,18 +1015,19 @@ class promise final {
    * @param value The value to provide to the waiting future
    */
   void set_value(T&& value) {
-    if (m_promises) {
-      m_promises->SetValue(m_request, std::move(value));
+    if (m_state) {
+      auto state = std::move(m_state);
+      state->SetValue(m_request, std::move(value));
     }
-    m_promises = nullptr;
   }
 
  private:
-  promise(PromiseFactory<T>* promises, uint64_t request) noexcept
-      : m_request(request), m_promises(promises) {}
+  promise(std::shared_ptr<detail::PromiseFactoryState<T>> state,
+          uint64_t request) noexcept
+      : m_request(request), m_state(request ? std::move(state) : nullptr) {}
 
   uint64_t m_request = 0;
-  PromiseFactory<T>* m_promises = nullptr;
+  std::shared_ptr<detail::PromiseFactoryState<T>> m_state;
 };
 
 /**
@@ -620,16 +1039,20 @@ class promise<void> final {
 
  public:
   /**
-   * Constructs an empty promise.
+   * Constructs a pending promise using the default factory.
    */
-  promise() : m_promises(&PromiseFactory<void>::GetInstance()) {
-    m_request = m_promises->CreateRequest();
+  promise() : m_state(PromiseFactory<void>::GetInstance().m_state) {
+    m_request = m_state->CreateRequest();
   }
 
+  /**
+   * Moves a promise, leaving the source empty.
+   * @param oth the source promise
+   */
   promise(promise&& oth) noexcept
-      : m_request(oth.m_request), m_promises(oth.m_promises) {
+      : m_request(oth.m_request), m_state(std::move(oth.m_state)) {
     oth.m_request = 0;
-    oth.m_promises = nullptr;
+    oth.m_state = nullptr;
   }
 
   promise(const promise&) = delete;
@@ -638,16 +1061,23 @@ class promise<void> final {
    * Sets the promised value if not already set.
    */
   ~promise() {
-    if (m_promises) {
-      m_promises->SetValue(m_request);
+    if (auto state = std::move(m_state)) {
+      state->SetDefaultValue(m_request);
     }
   }
 
+  /**
+   * Supplies a default value for this promise and moves another promise into
+   * it.
+   * @param oth the source promise
+   * @return This promise
+   */
   promise& operator=(promise&& oth) noexcept {
-    m_request = oth.m_request;
-    m_promises = oth.m_promises;
-    oth.m_request = 0;
-    oth.m_promises = nullptr;
+    if (this != &oth) {
+      promise old{std::move(*this)};
+      m_request = std::exchange(oth.m_request, 0);
+      m_state = std::move(oth.m_state);
+    }
     return *this;
   }
 
@@ -655,19 +1085,20 @@ class promise<void> final {
 
   /**
    * Swaps this promise with another one.
+   * @param oth the other promise
    */
   void swap(promise& oth) noexcept {
     std::swap(m_request, oth.m_request);
-    std::swap(m_promises, oth.m_promises);
+    std::swap(m_state, oth.m_state);
   }
 
   /**
-   * Gets a future for this promise.
+   * Gets a future for this promise. Must only be called once per request.
    *
    * @return The future
    */
   future<void> get_future() noexcept {
-    return future<void>(m_promises, m_request);
+    return future<void>(m_state, m_request);
   }
 
   /**
@@ -675,22 +1106,25 @@ class promise<void> final {
    * Only effective once (subsequent calls will be ignored).
    */
   void set_value() {
-    if (m_promises) {
-      m_promises->SetValue(m_request);
+    if (m_state) {
+      auto state = std::move(m_state);
+      state->SetDefaultValue(m_request);
     }
-    m_promises = nullptr;
   }
 
  private:
-  promise(PromiseFactory<void>* promises, uint64_t request) noexcept
-      : m_request(request), m_promises(promises) {}
+  promise(std::shared_ptr<detail::PromiseFactoryState<void>> state,
+          uint64_t request) noexcept
+      : m_request(request), m_state(request ? std::move(state) : nullptr) {}
 
   uint64_t m_request = 0;
-  PromiseFactory<void>* m_promises = nullptr;
+  std::shared_ptr<detail::PromiseFactoryState<void>> m_state;
 };
 
 /**
  * Constructs a valid future with the value set.
+ * @param value the result
+ * @return A ready future
  */
 template <typename T>
 inline future<T> make_ready_future(T&& value) {
@@ -700,6 +1134,7 @@ inline future<T> make_ready_future(T&& value) {
 
 /**
  * Constructs a valid future with the value set.
+ * @return A ready future
  */
 inline future<void> make_ready_future() {
   return PromiseFactory<void>::GetInstance().MakeReadyFuture();
@@ -707,234 +1142,118 @@ inline future<void> make_ready_future() {
 
 template <typename T>
 inline future<T> PromiseFactory<T>::CreateFuture(uint64_t request) {
-  return future<T>{this, request};
+  return future<T>{m_state, request};
+}
+
+inline future<void> PromiseFactory<void>::CreateFuture(uint64_t request) {
+  return future<void>{m_state, request};
 }
 
 template <typename T>
 future<T> PromiseFactory<T>::MakeReadyFuture(T&& value) {
-  std::unique_lock lock(GetResultMutex());
-  uint64_t req = CreateErasedRequest();
-  m_results.emplace_back(std::piecewise_construct, std::forward_as_tuple(req),
-                         std::forward_as_tuple(std::move(value)));
-  return future<T>{this, req};
+  auto state = m_state;
+  uint64_t request = state->CreateRequest();
+  future<T> result{state, request};
+  state->SetValue(request, std::move(value));
+  return result;
+}
+
+inline future<void> PromiseFactory<void>::MakeReadyFuture() {
+  auto state = m_state;
+  uint64_t request = state->CreateRequest();
+  future<void> result{state, request};
+  state->SetDefaultValue(request);
+  return result;
 }
 
 template <typename T>
 inline promise<T> PromiseFactory<T>::CreatePromise(uint64_t request) {
-  return promise<T>{this, request};
+  return promise<T>{m_state, request};
+}
+
+inline promise<void> PromiseFactory<void>::CreatePromise(uint64_t request) {
+  return promise<void>{m_state, request};
 }
 
 template <typename T>
 void PromiseFactory<T>::SetValue(uint64_t request, const T& value) {
-  std::unique_lock lock(GetResultMutex());
-  if (!EraseRequest(request)) {
-    return;
-  }
-  auto it = std::find_if(m_thens.begin(), m_thens.end(),
-                         [=](const auto& x) { return x.request == request; });
-  if (it != m_thens.end()) {
-    uint64_t outRequest = it->outRequest;
-    ThenFunction func = std::move(it->func);
-    m_thens.erase(it);
-    lock.unlock();
-    return func(outRequest, value);
-  }
-  m_results.emplace_back(std::piecewise_construct,
-                         std::forward_as_tuple(request),
-                         std::forward_as_tuple(value));
-  Notify();
+  auto state = m_state;
+  state->SetValue(request, value);
 }
 
 template <typename T>
 void PromiseFactory<T>::SetValue(uint64_t request, T&& value) {
-  std::unique_lock lock(GetResultMutex());
-  if (!EraseRequest(request)) {
-    return;
-  }
-  auto it = std::find_if(m_thens.begin(), m_thens.end(),
-                         [=](const auto& x) { return x.request == request; });
-  if (it != m_thens.end()) {
-    uint64_t outRequest = it->outRequest;
-    ThenFunction func = std::move(it->func);
-    m_thens.erase(it);
-    lock.unlock();
-    return func(outRequest, std::move(value));
-  }
-  m_results.emplace_back(std::piecewise_construct,
-                         std::forward_as_tuple(request),
-                         std::forward_as_tuple(std::move(value)));
-  Notify();
+  auto state = m_state;
+  state->SetValue(request, std::move(value));
 }
 
-template <typename T>
-void PromiseFactory<T>::SetThen(uint64_t request, uint64_t outRequest,
-                                ThenFunction func) {
-  std::unique_lock lock(GetResultMutex());
-  auto it = std::find_if(m_results.begin(), m_results.end(),
-                         [=](const auto& r) { return r.first == request; });
-  if (it != m_results.end()) {
-    auto val = std::move(it->second);
-    m_results.erase(it);
-    lock.unlock();
-    return func(outRequest, std::move(val));
-  }
-  m_thens.emplace_back(request, outRequest, func);
-}
-
-template <typename T>
-bool PromiseFactory<T>::IsReady(uint64_t request) noexcept {
-  std::unique_lock lock(GetResultMutex());
-  auto it = std::find_if(m_results.begin(), m_results.end(),
-                         [=](const auto& r) { return r.first == request; });
-  return it != m_results.end();
-}
-
-template <typename T>
-T PromiseFactory<T>::GetResult(uint64_t request) {
-  // wait for response
-  std::unique_lock lock(GetResultMutex());
-  while (IsActive()) {
-    // Did we get a response to *our* request?
-    auto it = std::find_if(m_results.begin(), m_results.end(),
-                           [=](const auto& r) { return r.first == request; });
-    if (it != m_results.end()) {
-      // Yes, remove it from the vector and we're done.
-      auto rv = std::move(it->second);
-      m_results.erase(it);
-      return rv;
-    }
-    // No, keep waiting for a response
-    Wait(lock);
-  }
-  return T();
-}
-
-template <typename T>
-void PromiseFactory<T>::WaitResult(uint64_t request) {
-  // wait for response
-  std::unique_lock lock(GetResultMutex());
-  while (IsActive()) {
-    // Did we get a response to *our* request?
-    auto it = std::find_if(m_results.begin(), m_results.end(),
-                           [=](const auto& r) { return r.first == request; });
-    if (it != m_results.end()) {
-      return;
-    }
-    // No, keep waiting for a response
-    Wait(lock);
-  }
-}
-
-template <typename T>
-template <class Clock, class Duration>
-bool PromiseFactory<T>::WaitResultUntil(
-    uint64_t request,
-    const std::chrono::time_point<Clock, Duration>& timeout_time) {
-  std::unique_lock lock(GetResultMutex());
-  bool timeout = false;
-  while (IsActive()) {
-    // Did we get a response to *our* request?
-    auto it = std::find_if(m_results.begin(), m_results.end(),
-                           [=](const auto& r) { return r.first == request; });
-    if (it != m_results.end()) {
-      return true;
-    }
-    if (timeout) {
-      break;
-    }
-    // No, keep waiting for a response
-    if (!WaitUntil(lock, timeout_time)) {
-      timeout = true;
-    }
-  }
-  return false;
+inline void PromiseFactory<void>::SetValue(uint64_t request) {
+  auto state = m_state;
+  state->SetDefaultValue(request);
 }
 
 template <typename T>
 PromiseFactory<T>& PromiseFactory<T>::GetInstance() {
-  static PromiseFactory inst;
+  static PromiseFactory<T> inst;
   return inst;
 }
 
-inline future<void> PromiseFactory<void>::CreateFuture(uint64_t request) {
-  return future<void>{this, request};
-}
-
-inline promise<void> PromiseFactory<void>::CreatePromise(uint64_t request) {
-  return promise<void>{this, request};
-}
-
-template <class Clock, class Duration>
-bool PromiseFactory<void>::WaitResultUntil(
-    uint64_t request,
-    const std::chrono::time_point<Clock, Duration>& timeout_time) {
-  std::unique_lock lock(GetResultMutex());
-  bool timeout = false;
-  while (IsActive()) {
-    // Did we get a response to *our* request?
-    auto it = std::find_if(m_results.begin(), m_results.end(),
-                           [=](const auto& r) { return r == request; });
-    if (it != m_results.end()) {
-      return true;
-    }
-    if (timeout) {
-      break;
-    }
-    // No, keep waiting for a response
-    if (!WaitUntil(lock, timeout_time)) {
-      timeout = true;
-    }
-  }
-  return false;
-}
+namespace detail {
 
 template <typename To, typename From>
 template <typename F>
-future<To> detail::FutureThen<To, From>::Create(
-    PromiseFactory<From>& fromFactory, uint64_t request,
+future<To> FutureThen<To, From>::Create(
+    const std::shared_ptr<PromiseFactoryState<From>>& from, uint64_t request,
     PromiseFactory<To>& factory, F&& func) {
-  uint64_t req = factory.CreateRequest();
-  fromFactory.SetThen(request, req, [&factory, func](uint64_t r, From value) {
-    factory.SetValue(r, func(std::move(value)));
-  });
-  return factory.CreateFuture(req);
+  uint64_t outRequest = factory.CreateRequest();
+  auto out = factory.CreateFuture(outRequest);
+  std::weak_ptr<PromiseFactoryState<To>> destination = factory.m_state;
+  if (outRequest == 0) {
+    from->IgnoreResult(request);
+    return out;
+  }
+  from->SetThen(request,
+                [destination, outRequest, func = std::forward<F>(func)](
+                    FutureResult<From>& result) mutable {
+                  auto state = destination.lock();
+                  if (!state) {
+                    return;
+                  }
+                  if (result.status == FutureStatus::CANCELLED) {
+                    state->Cancel(outRequest);
+                    return;
+                  }
+                  if (result.status == FutureStatus::ERROR) {
+                    state->SetException(outRequest, result.error);
+                    return;
+                  }
+                  // This claims the callback before releasing the destination
+                  // mutex. Close may subsequently cancel its output, in which
+                  // case SetValue is a no-op.
+                  if (!state->IsActive()) {
+                    return;
+                  }
+                  try {
+                    auto invoke = [&]() -> To {
+                      if constexpr (std::is_void_v<From>) {
+                        return std::invoke(func);
+                      } else {
+                        return std::invoke(func, std::move(*result.value));
+                      }
+                    };
+                    if constexpr (std::is_void_v<To>) {
+                      invoke();
+                      state->SetDefaultValue(outRequest);
+                    } else {
+                      state->SetValue(outRequest, invoke());
+                    }
+                  } catch (...) {
+                    state->SetException(outRequest, std::current_exception());
+                  }
+                });
+  return out;
 }
 
-template <typename From>
-template <typename F>
-future<void> detail::FutureThen<void, From>::Create(
-    PromiseFactory<From>& fromFactory, uint64_t request,
-    PromiseFactory<void>& factory, F&& func) {
-  uint64_t req = factory.CreateRequest();
-  fromFactory.SetThen(request, req, [&factory, func](uint64_t r, From value) {
-    func(std::move(value));
-    factory.SetValue(r);
-  });
-  return factory.CreateFuture(req);
-}
-
-template <typename To>
-template <typename F>
-future<To> detail::FutureThen<To, void>::Create(
-    PromiseFactory<void>& fromFactory, uint64_t request,
-    PromiseFactory<To>& factory, F&& func) {
-  uint64_t req = factory.CreateRequest();
-  fromFactory.SetThen(request, req, [&factory, func](uint64_t r) {
-    factory.SetValue(r, func());
-  });
-  return factory.CreateFuture(req);
-}
-
-template <typename F>
-future<void> detail::FutureThen<void, void>::Create(
-    PromiseFactory<void>& fromFactory, uint64_t request,
-    PromiseFactory<void>& factory, F&& func) {
-  uint64_t req = factory.CreateRequest();
-  fromFactory.SetThen(request, req, [&factory, func](uint64_t r) {
-    func();
-    factory.SetValue(r);
-  });
-  return factory.CreateFuture(req);
-}
+}  // namespace detail
 
 }  // namespace wpi::util

@@ -148,6 +148,7 @@ void WorkerThreadThread<R, T...>::Main() {
     requests.clear();
     m_promises.Notify();
   }
+  m_promises.Close();
 }
 
 }  // namespace detail

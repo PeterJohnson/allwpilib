@@ -7,10 +7,14 @@
 // clang-format on
 
 #include <atomic>
+#include <chrono>
 #include <memory>
+#include <optional>
 #include <thread>
+#include <type_traits>
 #include <utility>
 
+#include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "wpi/net/uv/Loop.hpp"
@@ -281,6 +285,52 @@ TEST_CASE("UvAsyncFunctionTest VoidWaitFor", "[uv][async-function]") {
     theThread.join();
   }
   REQUIRE(call_check);
+}
+
+TEMPLATE_TEST_CASE("UvAsyncFunctionTest PromiseOutlivesHandle",
+                   "[uv][async-function]", int, void) {
+  std::optional<wpi::util::promise<TestType>> producer;
+  wpi::util::future<TestType> result;
+  {
+    auto loop = Loop::Create();
+    auto async = AsyncFunction<TestType()>::Create(loop);
+    async->wakeup = [&](wpi::util::promise<TestType> out) {
+      producer.emplace(std::move(out));
+      async->Close();
+    };
+    result = async->Call();
+    loop->Run();
+
+    // Closing must settle outstanding requests even while the handle lives.
+    REQUIRE(producer.has_value());
+    REQUIRE_FALSE(result.wait_for(std::chrono::seconds{0}));
+    REQUIRE_FALSE(async->Call().valid());
+  }
+
+  // The promise and future also survive destruction of both handle and loop.
+  if constexpr (std::is_void_v<TestType>) {
+    producer->set_value();
+    result.get();
+  } else {
+    producer->set_value(42);
+    REQUIRE(result.get() == 0);
+  }
+  REQUIRE_FALSE(result.valid());
+  producer.reset();
+}
+
+TEST_CASE("UvAsyncFunctionTest CloseWithQueuedCall", "[uv][async-function]") {
+  auto loop = Loop::Create();
+  auto async = AsyncFunction<int()>::Create(loop);
+  bool called = false;
+  async->wakeup = [&](wpi::util::promise<int>) { called = true; };
+  auto result = async->Call();
+  async->Close();
+  loop->Run();
+
+  REQUIRE_FALSE(called);
+  REQUIRE_FALSE(result.wait_for(std::chrono::seconds{0}));
+  REQUIRE(result.get() == 0);
 }
 
 }  // namespace wpi::net::uv

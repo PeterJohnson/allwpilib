@@ -4,6 +4,11 @@
 
 #include "wpi/net/WorkerThread.hpp"
 
+#include <chrono>
+#include <tuple>
+#include <type_traits>
+
+#include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "wpi/net/EventLoopRunner.hpp"
@@ -82,6 +87,50 @@ TEST_CASE("WorkerThreadTest LoopVoid", "[worker][thread]") {
   std::unique_lock lock{m};
   cv.wait(lock, [&] { return callbacks == 1; });
   REQUIRE(callbacks == 1);
+}
+
+TEMPLATE_TEST_CASE("WorkerThreadTest FutureOutlivesWorker", "[worker][thread]",
+                   int, void) {
+  wpi::util::future<TestType> result;
+  {
+    WorkerThread<TestType()> worker;
+    result = worker.QueueWork([]() -> TestType {
+      if constexpr (!std::is_void_v<TestType>) {
+        return 42;
+      }
+    });
+    result.wait();
+  }
+
+  REQUIRE(result.is_ready());
+  if constexpr (std::is_void_v<TestType>) {
+    result.get();
+  } else {
+    REQUIRE(result.get() == 42);
+  }
+  REQUIRE_FALSE(result.valid());
+}
+
+TEST_CASE("WorkerThreadTest ShutdownCancelsQueuedWork", "[worker][thread]") {
+  detail::WorkerThreadThread<int> thread;
+  auto request = thread.m_promises.CreateRequest();
+  auto result = thread.m_promises.CreateFuture(request);
+  bool called = false;
+  thread.m_requests.emplace_back(
+      request,
+      [&] {
+        called = true;
+        return 42;
+      },
+      std::tuple<>{});
+
+  thread.Stop();
+  thread.Main();
+
+  // Thread exit must settle requests before the thread object is destroyed.
+  REQUIRE_FALSE(called);
+  REQUIRE_FALSE(result.wait_for(std::chrono::seconds{0}));
+  REQUIRE(result.get() == 0);
 }
 
 }  // namespace wpi::net

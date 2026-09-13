@@ -40,8 +40,11 @@ class AsyncFunction<R(T...)> final
   AsyncFunction(const std::shared_ptr<Loop>& loop,
                 std::function<void(wpi::util::promise<R>, T...)> func,
                 const private_init&)
-      : wakeup{std::move(func)}, m_loop{loop} {}
+      : wakeup{std::move(func)}, m_loop{loop} {
+    this->closed.connect([this] { m_promises.Close(); });
+  }
   ~AsyncFunction() noexcept override {
+    m_promises.Close();
     if (auto loop = m_loop.lock()) {
       this->Close();
     } else {
@@ -120,22 +123,25 @@ class AsyncFunction<R(T...)> final
    * The async function will be called on the loop thread.
    *
    * The future will return a default-constructed result if this handle is
-   * destroyed while waiting for a result.
+   * closed or destroyed while waiting for a result. Futures and promises may
+   * safely outlive the handle.
    */
   template <typename... U>
   wpi::util::future<R> Call(U&&... u) {
-    // create the future
-    uint64_t req = m_promises.CreateRequest();
-
     auto loop = m_loop.lock();
-    if (loop->IsClosing()) {
+    if (!loop || loop->IsClosing()) {
       if constexpr (std::same_as<R, void>) {
         return m_promises.MakeReadyFuture();
       } else {
         return m_promises.MakeReadyFuture({});
       }
     }
-    if (loop && loop->GetThreadId() == std::this_thread::get_id()) {
+    // create the future
+    uint64_t req = m_promises.CreateRequest();
+    if (req == 0) {
+      return {};
+    }
+    if (loop->GetThreadId() == std::this_thread::get_id()) {
       // called from within the loop, just call the function directly
       wakeup(m_promises.CreatePromise(req), std::forward<U>(u)...);
       return m_promises.CreateFuture(req);
