@@ -483,7 +483,7 @@ void internal::executor::start_func(std::function<std::string(int *)> const &fun
     auto trampoline = [fun, this, &started]()
     {
         {
-            std::lock_guard<std::mutex> lock(m_mutex);
+            std::scoped_lock lock{m_mutex};
             // Save our thread id so that the caller can cancel us
             m_tid = GetCurrentThreadId();
             EnumWindows(&enum_windows_callback, (LPARAM)this);
